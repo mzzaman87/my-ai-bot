@@ -12,6 +12,7 @@ app = FastAPI()
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 
 
 BUSINESS_CONTEXT = """
@@ -46,12 +47,12 @@ Customer Support Style:
 - If user asks about Hospital SaaS or Pharmacy SaaS, explain the benefits clearly.
 - If user asks price, say pricing depends on requirement, number of users, features, setup, customization, and support level.
 - Ask for business name, phone number, service needed, and location.
-- If user asks for demo, ask them to share name, phone number, business type, and preferred demo time.
+- If user asks for demo, ask them to share name, address, phone, WhatsApp, and email.
 - If user asks about website, share: https://www.onskillit.com/
 
 Important:
 If user asks about pricing, reply that pricing depends on service, platform, and automation level.
-If user asks to talk to human/admin, ask them to share their name, phone number, business name, service needed, and message.
+If user asks to talk to human/admin, ask them to share their name, address, phone, WhatsApp, and email.
 If user asks about social media publishing, explain that content creation is available now and auto-publishing can be connected platform by platform using APIs.
 """
 
@@ -244,6 +245,27 @@ async def receive_message(request: Request):
 
 def handle_command(user_text: str) -> str:
     lower_text = user_text.lower()
+
+    # Auto save lead if customer sends this format:
+    # Name:
+    # Address:
+    # Phone:
+    # WhatsApp:
+    # Email:
+    lead_data = extract_lead_data(user_text)
+    if lead_data:
+        saved = save_lead_to_sheet(lead_data)
+
+        if saved:
+            return (
+                "✅ ধন্যবাদ! আপনার তথ্য সফলভাবে গ্রহণ করা হয়েছে।\n\n"
+                "আমাদের team/admin আপনার সাথে যোগাযোগ করবে।"
+            )
+
+        return (
+            "⚠️ আপনার তথ্য পাওয়া গেছে, কিন্তু Google Sheet-এ save করতে সমস্যা হয়েছে।\n"
+            "অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।"
+        )
 
     if lower_text == "/help":
         return get_help_message()
@@ -535,7 +557,7 @@ Explain our services clearly.
 If the user asks about Hospital SaaS, explain Hospital SaaS benefits.
 If the user asks about Pharmacy SaaS, explain Pharmacy SaaS benefits.
 If the question is about price, say pricing depends on requirement and ask for details.
-If the user asks for demo, ask for name, phone number, business type, and preferred demo time.
+If the user asks for demo, ask for name, address, phone, WhatsApp, and email.
 Keep the reply helpful, polite, and business-friendly.
 Reply in the user's language.
 """
@@ -557,6 +579,67 @@ Reply in the user's language.
 
 def remove_command(text: str, command: str) -> str:
     return text[len(command):].strip()
+
+
+def extract_lead_data(text: str):
+    lines = text.splitlines()
+
+    data = {
+        "name": "",
+        "address": "",
+        "phone": "",
+        "whatsapp": "",
+        "email": ""
+    }
+
+    found = False
+
+    for line in lines:
+        if ":" not in line:
+            continue
+
+        key, value = line.split(":", 1)
+        key = key.strip().lower()
+        value = value.strip()
+
+        if key == "name":
+            data["name"] = value
+            found = True
+
+        elif key == "address":
+            data["address"] = value
+            found = True
+
+        elif key == "phone":
+            data["phone"] = value
+            found = True
+
+        elif key in ["whatsapp", "whatsapps", "wa"]:
+            data["whatsapp"] = value
+            found = True
+
+        elif key == "email":
+            data["email"] = value
+            found = True
+
+    if found and (data["name"] or data["phone"] or data["whatsapp"] or data["email"]):
+        return data
+
+    return None
+
+
+def save_lead_to_sheet(lead_data: dict) -> bool:
+    if not SHEET_WEBHOOK_URL:
+        print("SHEET_WEBHOOK_URL is missing")
+        return False
+
+    try:
+        response = requests.post(SHEET_WEBHOOK_URL, json=lead_data, timeout=15)
+        print("Sheet API Response:", response.status_code, response.text)
+        return response.status_code == 200
+    except Exception as e:
+        print("Sheet save error:", str(e))
+        return False
 
 
 def get_help_message() -> str:
@@ -637,6 +720,13 @@ Create step-by-step plan.
 Translation:
 2️⃣3️⃣ /translate [text]
 Translate Bangla to English or English to Bangla.
+
+Lead Save Format:
+Name:
+Address:
+Phone:
+WhatsApp:
+Email:
 
 You can also ask anything normally without command.
 
@@ -818,11 +908,10 @@ Cost may depend on:
 
 Please share:
 Name:
+Address:
 Phone:
-Business Type:
-Service Needed:
-Number of Users:
-Location:
+WhatsApp:
+Email:
 
 Then we can suggest the best package.
 """
@@ -832,19 +921,15 @@ def get_demo_message() -> str:
     return """
 📅 Demo Request
 
-Sure, we can arrange a demo.
-
-Please send your details:
+Demo request করার জন্য নিচের format-এ তথ্য পাঠান:
 
 Name:
+Address:
 Phone:
-Business Name:
-Business Type: Hospital / Clinic / Pharmacy / Other
-Service Needed: Hospital SaaS / Pharmacy SaaS / AI Assistant
-Preferred Demo Time:
-Location:
+WhatsApp:
+Email:
 
-Our admin/team will review and contact you.
+আপনার তথ্য পেলে আমাদের team/admin যোগাযোগ করবে।
 """
 
 
@@ -858,10 +943,10 @@ https://www.onskillit.com/
 For support, please send:
 
 Name:
+Address:
 Phone:
-Business Name:
-Service Needed:
-Message:
+WhatsApp:
+Email:
 
 You can also type:
 /human
@@ -874,11 +959,11 @@ def get_policy_message() -> str:
     return """
 📌 Service Policy
 
-1. We provide SaaS rental/service, AI assistant, content, customer support and automation setup services.
-2. Pricing depends on requirements, users, features and support level.
+1. We provide SaaS rental/service, AI assistant, content, customer support, and automation setup services.
+2. Pricing depends on requirements, users, features, and support level.
 3. AI replies depend on user input and connected tools.
 4. Social media auto-publishing requires platform API/token permission.
-5. Some platforms may require approval, paid API, or business verification.
+5. Some platforms may require approval, a paid API, or business verification.
 6. We do not sell user data.
 7. Users can stop using the assistant anytime.
 """
@@ -891,12 +976,10 @@ def get_human_support_message() -> str:
 Please send your details in this format:
 
 Name:
+Address:
 Phone:
-Business Name:
-Business Type:
-Service Needed:
-Location:
-Message:
+WhatsApp:
+Email:
 
 Our admin/team will review your request.
 """
@@ -911,7 +994,7 @@ def send_whatsapp_message(to: str, message: str):
     }
 
     payload = {
-        "messaging_product": "whatsapp",
+        "messaging_product": "WhatsApp",
         "to": to,
         "type": "text",
         "text": {
