@@ -16,7 +16,7 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 @app.get("/")
 def home():
     return {
-        "status": "Hafiz WhatsApp AI Assistant is running"
+        "status": "Monir WhatsApp AI Assistant is running"
     }
 
 
