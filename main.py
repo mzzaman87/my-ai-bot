@@ -20,6 +20,25 @@ def home():
     }
 
 
+@app.get("/send-test")
+def send_test_message():
+    test_number = os.getenv("TEST_PHONE_NUMBER")
+
+    if not test_number:
+        return {
+            "error": "TEST_PHONE_NUMBER is missing"
+        }
+
+    message = "Hello! I am Monir AI Personal Assistant. WhatsApp sending test is working."
+
+    send_whatsapp_message(test_number, message)
+
+    return {
+        "status": "test message sent",
+        "to": test_number
+    }
+
+
 @app.get("/webhook")
 async def verify_webhook(request: Request):
     params = request.query_params
@@ -49,7 +68,9 @@ async def receive_message(request: Request):
 
         if "messages" not in value:
             print("No message found in webhook")
-            return {"status": "no message found"}
+            return {
+                "status": "no message found"
+            }
 
         message = value["messages"][0]
         user_phone = message["from"]
@@ -63,7 +84,9 @@ async def receive_message(request: Request):
 
             send_whatsapp_message(user_phone, ai_reply)
 
-        return {"status": "success"}
+        return {
+            "status": "success"
+        }
 
     except Exception as e:
         print("Webhook error:", str(e))
@@ -74,7 +97,7 @@ async def receive_message(request: Request):
 
 
 def send_whatsapp_message(to: str, message: str):
-    url = f"https://graph.facebook.com/v20.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v25.0/{PHONE_NUMBER_ID}/messages"
 
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
