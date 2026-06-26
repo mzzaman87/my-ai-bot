@@ -1,6 +1,7 @@
 import os
 import requests
 from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from assistant import ask_ai
 
@@ -20,28 +21,97 @@ def home():
     }
 
 
-@app.get("/privacy-policy")
+@app.get("/privacy-policy", response_class=HTMLResponse)
 def privacy_policy():
-    return {
-        "app_name": "Monir AI Assistant",
-        "privacy_policy": {
-            "overview": "Monir AI Assistant is a WhatsApp-based AI personal assistant.",
-            "data_we_collect": "The app may receive WhatsApp messages sent by users to generate AI replies.",
-            "how_we_use_data": "User messages are used only to understand the request and generate helpful responses.",
-            "data_sharing": "We do not sell user data. We do not share user messages with advertisers.",
-            "ai_processing": "Messages may be processed by AI services to generate responses.",
-            "user_control": "Users can stop using the assistant at any time by not messaging the WhatsApp number.",
-            "contact": "For privacy questions, contact us at mzzaman0171@gmail.com."
-        }
-    }
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Privacy Policy - Monir AI Assistant</title>
+        <meta charset="UTF-8">
+    </head>
+    <body style="font-family: Arial, sans-serif; max-width: 850px; margin: 40px auto; line-height: 1.7;">
+        <h1>Privacy Policy</h1>
+        <p><strong>App Name:</strong> Monir AI Assistant</p>
+
+        <h2>Overview</h2>
+        <p>
+            Monir AI Assistant is a WhatsApp-based AI personal assistant designed to help users
+            with text-based questions, productivity, content writing, business support, and general assistance.
+        </p>
+
+        <h2>Information We Receive</h2>
+        <p>
+            This app may receive WhatsApp messages that users send to the connected WhatsApp number.
+            These messages are used only to understand the user's request and generate a helpful response.
+        </p>
+
+        <h2>How We Use Information</h2>
+        <p>
+            User messages are processed only for providing AI-generated replies and improving the user experience.
+            We do not sell, rent, or share user data with advertisers.
+        </p>
+
+        <h2>AI Processing</h2>
+        <p>
+            User messages may be processed by AI services in order to generate responses.
+            The app is intended for general productivity and assistance purposes.
+        </p>
+
+        <h2>Data Sharing</h2>
+        <p>
+            We do not sell personal data. We do not share WhatsApp messages with advertisers.
+        </p>
+
+        <h2>User Control</h2>
+        <p>
+            Users can stop using this assistant at any time by not sending messages to the WhatsApp number.
+            Users may also request data deletion by contacting us.
+        </p>
+
+        <h2>Contact</h2>
+        <p>
+            For privacy questions, contact us at:
+            <strong>mzzaman0171@gmail.com</strong>
+        </p>
+
+        <p>Last updated: June 26, 2026</p>
+    </body>
+    </html>
+    """
 
 
-@app.get("/data-deletion")
+@app.get("/data-deletion", response_class=HTMLResponse)
 def data_deletion():
-    return {
-        "app_name": "Monir AI Assistant",
-        "data_deletion_instructions": "To request data deletion, contact us at mzzaman0171@gmail.com with your WhatsApp number. We will remove any stored user-related data if applicable."
-    }
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Data Deletion Instructions - Monir AI Assistant</title>
+        <meta charset="UTF-8">
+    </head>
+    <body style="font-family: Arial, sans-serif; max-width: 850px; margin: 40px auto; line-height: 1.7;">
+        <h1>Data Deletion Instructions</h1>
+        <p><strong>App Name:</strong> Monir AI Assistant</p>
+
+        <p>
+            To request deletion of your data, please contact us at:
+            <strong>mzzaman0171@gmail.com</strong>
+        </p>
+
+        <p>
+            Please include your WhatsApp number in your request so we can identify the related records,
+            if any are stored.
+        </p>
+
+        <p>
+            We will review and process valid deletion requests as soon as possible.
+        </p>
+
+        <p>Last updated: June 26, 2026</p>
+    </body>
+    </html>
+    """
 
 
 @app.get("/send-test")
