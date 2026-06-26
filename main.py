@@ -20,6 +20,30 @@ def home():
     }
 
 
+@app.get("/privacy-policy")
+def privacy_policy():
+    return {
+        "app_name": "Monir AI Assistant",
+        "privacy_policy": {
+            "overview": "Monir AI Assistant is a WhatsApp-based AI personal assistant.",
+            "data_we_collect": "The app may receive WhatsApp messages sent by users to generate AI replies.",
+            "how_we_use_data": "User messages are used only to understand the request and generate helpful responses.",
+            "data_sharing": "We do not sell user data. We do not share user messages with advertisers.",
+            "ai_processing": "Messages may be processed by AI services to generate responses.",
+            "user_control": "Users can stop using the assistant at any time by not messaging the WhatsApp number.",
+            "contact": "For privacy questions, contact us at mzzaman0171@gmail.com."
+        }
+    }
+
+
+@app.get("/data-deletion")
+def data_deletion():
+    return {
+        "app_name": "Monir AI Assistant",
+        "data_deletion_instructions": "To request data deletion, contact us at mzzaman0171@gmail.com with your WhatsApp number. We will remove any stored user-related data if applicable."
+    }
+
+
 @app.get("/send-test")
 def send_test_message():
     test_number = os.getenv("TEST_PHONE_NUMBER")
@@ -84,6 +108,12 @@ async def receive_message(request: Request):
 
             send_whatsapp_message(user_phone, ai_reply)
 
+        else:
+            send_whatsapp_message(
+                user_phone,
+                "Sorry, I can currently reply only to text messages."
+            )
+
         return {
             "status": "success"
         }
@@ -116,3 +146,5 @@ def send_whatsapp_message(to: str, message: str):
     response = requests.post(url, headers=headers, json=payload)
 
     print("WhatsApp API Response:", response.status_code, response.text)
+
+    return response
