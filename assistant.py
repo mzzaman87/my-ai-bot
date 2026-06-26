@@ -12,7 +12,7 @@ model = genai.GenerativeModel("gemini-3.5-flash")
 
 
 SYSTEM_PROMPT = """
-You are Hafiz AI Personal Assistant.
+You are Monir AI Personal Assistant.
 
 You help the user with:
 - business planning
