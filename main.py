@@ -21,27 +21,34 @@ def home():
 
 
 @app.get("/webhook")
-def verify_webhook(
-    hub_mode: str = None,
-    hub_verify_token: str = None,
-    hub_challenge: str = None
-):
-    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
-        return int(hub_challenge)
+async def verify_webhook(request: Request):
+    params = request.query_params
+
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
+
+    print("Webhook verification request:", dict(params))
+
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return int(challenge)
 
     return {
-        "error": "Webhook verification failed"
+        "error": "Webhook verification failed",
+        "received_token": token
     }
 
 
 @app.post("/webhook")
 async def receive_message(request: Request):
     data = await request.json()
+    print("Incoming webhook data:", data)
 
     try:
         value = data["entry"][0]["changes"][0]["value"]
 
         if "messages" not in value:
+            print("No message found in webhook")
             return {"status": "no message found"}
 
         message = value["messages"][0]
@@ -49,15 +56,17 @@ async def receive_message(request: Request):
 
         if message["type"] == "text":
             user_text = message["text"]["body"]
+            print("User message:", user_text)
 
             ai_reply = ask_ai(user_text)
+            print("AI reply:", ai_reply)
 
             send_whatsapp_message(user_phone, ai_reply)
 
         return {"status": "success"}
 
     except Exception as e:
-        print("Error:", e)
+        print("Webhook error:", str(e))
         return {
             "status": "error",
             "message": str(e)
