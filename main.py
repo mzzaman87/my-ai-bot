@@ -14,10 +14,54 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
 
+BUSINESS_CONTEXT = """
+Business Name: OnSkill IT / MonirBot AI
+
+Website:
+https://www.onskillit.com/
+
+Main Business Services:
+1. Hospital SaaS rental/service
+2. Pharmacy SaaS rental/service
+3. WhatsApp AI Assistant setup
+4. AI Customer Support Bot
+5. Social Media Content Writing
+6. Facebook, Instagram, LinkedIn, Pinterest, Twitter/X Caption Writing
+7. Ecommerce Product Title and Description Writing
+8. SEO Title, Meta Description, Keyword and FAQ Writing
+9. Facebook/Instagram Ad Copy Writing
+10. Business Planning and Daily Task Planning
+11. Bangla-English Translation
+12. Website/WordPress Content Support
+13. Future Upgrade: Auto publish to Facebook, Instagram, LinkedIn, Pinterest, Website, Tumblr, Reddit, and Twitter/X
+
+Hospital SaaS Service:
+We provide Hospital SaaS on rental/service basis. It can help hospitals and clinics manage patient records, appointments, doctors, billing, prescriptions, reports, daily hospital operations, and staff workflow.
+
+Pharmacy SaaS Service:
+We provide Pharmacy SaaS on rental/service basis. It can help pharmacies manage medicine stock, sales, purchase, expiry tracking, billing, customer records, supplier records, reports, and daily pharmacy operations.
+
+Customer Support Style:
+- Reply politely and professionally.
+- If user asks about Hospital SaaS or Pharmacy SaaS, explain the benefits clearly.
+- If user asks price, say pricing depends on requirement, number of users, features, setup, customization, and support level.
+- Ask for business name, phone number, service needed, and location.
+- If user asks for demo, ask them to share name, phone number, business type, and preferred demo time.
+- If user asks about website, share: https://www.onskillit.com/
+
+Important:
+If user asks about pricing, reply that pricing depends on service, platform, and automation level.
+If user asks to talk to human/admin, ask them to share their name, phone number, business name, service needed, and message.
+If user asks about social media publishing, explain that content creation is available now and auto-publishing can be connected platform by platform using APIs.
+"""
+
+
 @app.get("/")
 def home():
     return {
-        "status": "MonirBot AI is running"
+        "status": "MonirBot AI is running",
+        "business": "OnSkill IT",
+        "website": "https://www.onskillit.com/"
     }
 
 
@@ -33,12 +77,14 @@ def privacy_policy():
     <body style="font-family: Arial, sans-serif; max-width: 850px; margin: 40px auto; line-height: 1.7;">
         <h1>Privacy Policy</h1>
         <p><strong>App Name:</strong> MonirBot AI</p>
+        <p><strong>Business:</strong> OnSkill IT</p>
+        <p><strong>Website:</strong> https://www.onskillit.com/</p>
 
         <h2>Overview</h2>
         <p>
-            MonirBot AI is a WhatsApp-based AI personal assistant designed to help users
-            with text-based questions, productivity, content writing, business support,
-            ecommerce, SEO, and general assistance.
+            MonirBot AI is a WhatsApp-based AI assistant designed to help users with
+            customer support, business inquiries, SaaS service information, content writing,
+            ecommerce support, SEO, productivity, and general assistance.
         </p>
 
         <h2>Information We Receive</h2>
@@ -49,7 +95,7 @@ def privacy_policy():
 
         <h2>How We Use Information</h2>
         <p>
-            User messages are processed only for providing AI-generated replies.
+            User messages are processed only for providing AI-generated replies and customer support.
             We do not sell, rent, or share user data with advertisers.
         </p>
 
@@ -92,6 +138,7 @@ def data_deletion():
     <body style="font-family: Arial, sans-serif; max-width: 850px; margin: 40px auto; line-height: 1.7;">
         <h1>Data Deletion Instructions</h1>
         <p><strong>App Name:</strong> MonirBot AI</p>
+        <p><strong>Business:</strong> OnSkill IT</p>
 
         <p>
             To request deletion of your data, please contact us at:
@@ -122,7 +169,7 @@ def send_test_message():
             "error": "TEST_PHONE_NUMBER is missing"
         }
 
-    message = "Hello! I am MonirBot AI. WhatsApp sending test is working."
+    message = "Hello! I am MonirBot AI from OnSkill IT. WhatsApp sending test is working."
 
     send_whatsapp_message(test_number, message)
 
@@ -202,18 +249,45 @@ def handle_command(user_text: str) -> str:
         return get_help_message()
 
     if lower_text == "/about":
-        return (
-            "I am MonirBot AI, your WhatsApp-based business and productivity assistant.\n\n"
-            "I can help you write social media posts, captions, ads, SEO content, product descriptions, "
-            "customer replies, business plans, translations, and daily task plans.\n\n"
-            "Type /help to see all commands."
-        )
+        return get_about_message()
+
+    if lower_text == "/services":
+        return get_services_message()
+
+    if lower_text == "/hospital":
+        return get_hospital_saas_message()
+
+    if lower_text == "/pharmacy":
+        return get_pharmacy_saas_message()
+
+    if lower_text == "/support":
+        return get_support_message()
+
+    if lower_text == "/faq":
+        return get_faq_message()
+
+    if lower_text == "/price":
+        return get_price_message()
+
+    if lower_text == "/demo":
+        return get_demo_message()
+
+    if lower_text == "/contact":
+        return get_contact_message()
+
+    if lower_text == "/policy":
+        return get_policy_message()
+
+    if lower_text == "/human":
+        return get_human_support_message()
 
     if lower_text.startswith("/post"):
         content = remove_command(user_text, "/post")
         if not content:
-            return "Please write your topic after /post.\n\nExample:\n/post Premium A2 Ghee offer for Facebook and Instagram"
+            return "Please write your topic after /post.\n\nExample:\n/post Hospital SaaS demo offer for clinics"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Create a complete social media post for this topic:
 
 {content}
@@ -236,8 +310,10 @@ Reply in the user's language.
     if lower_text.startswith("/caption"):
         content = remove_command(user_text, "/caption")
         if not content:
-            return "Please write your topic after /caption.\n\nExample:\n/caption Eid offer for ladies abaya"
+            return "Please write your topic after /caption.\n\nExample:\n/caption Hospital SaaS for clinic management"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Write an attractive social media caption for:
 
 {content}
@@ -255,8 +331,10 @@ Reply in the user's language.
     if lower_text.startswith("/hashtags"):
         content = remove_command(user_text, "/hashtags")
         if not content:
-            return "Please write your topic after /hashtags.\n\nExample:\n/hashtags abaya business in Kolkata"
+            return "Please write your topic after /hashtags.\n\nExample:\n/hashtags pharmacy software Bangladesh"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Generate relevant hashtags for this topic:
 
 {content}
@@ -273,13 +351,38 @@ Reply in the user's language.
     if lower_text.startswith("/customer"):
         content = remove_command(user_text, "/customer")
         if not content:
-            return "Please paste the customer message after /customer.\n\nExample:\n/customer দাম কত?"
+            return "Please paste the customer message after /customer.\n\nExample:\n/customer Hospital software price কত?"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Write a polite, professional WhatsApp customer reply for this message:
 
 {content}
 
-Make it friendly, clear, and sales-focused.
+Make it friendly, clear, helpful, and sales-focused.
+If needed, ask one follow-up question.
+Reply in the user's language.
+"""
+        return ask_ai(prompt)
+
+    if lower_text.startswith("/support-reply"):
+        content = remove_command(user_text, "/support-reply")
+        if not content:
+            return "Please paste the customer issue after /support-reply.\n\nExample:\n/support-reply Pharmacy software login হচ্ছে না"
+        prompt = f"""
+{BUSINESS_CONTEXT}
+
+Write a customer support reply for this issue:
+
+{content}
+
+Include:
+1. A polite greeting
+2. Acknowledgement of the issue
+3. Simple solution steps
+4. Ask for screenshot/details if needed
+5. Friendly closing
+
 Reply in the user's language.
 """
         return ask_ai(prompt)
@@ -287,8 +390,10 @@ Reply in the user's language.
     if lower_text.startswith("/seo"):
         content = remove_command(user_text, "/seo")
         if not content:
-            return "Please write your topic/product/service after /seo.\n\nExample:\n/seo local SEO service for optometry clinic"
+            return "Please write your topic/product/service after /seo.\n\nExample:\n/seo Hospital SaaS Bangladesh"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Create SEO content for:
 
 {content}
@@ -308,14 +413,16 @@ Reply in the user's language.
     if lower_text.startswith("/product"):
         content = remove_command(user_text, "/product")
         if not content:
-            return "Please write product details after /product.\n\nExample:\n/product A2 Ghee 10 lb tin price $222"
+            return "Please write product/service details after /product.\n\nExample:\n/product Pharmacy SaaS monthly rental service"
         prompt = f"""
-Create ecommerce product content for:
+{BUSINESS_CONTEXT}
+
+Create product/service content for:
 
 {content}
 
 Include:
-1. Product title
+1. Product/service title
 2. Short description
 3. Long description
 4. Key benefits
@@ -330,8 +437,10 @@ Reply in the user's language.
     if lower_text.startswith("/idea"):
         content = remove_command(user_text, "/idea")
         if not content:
-            return "Please write your topic after /idea.\n\nExample:\n/idea Facebook content ideas for software tools business"
+            return "Please write your topic after /idea.\n\nExample:\n/idea Facebook content ideas for Hospital SaaS"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Give practical ideas for:
 
 {content}
@@ -349,8 +458,10 @@ Reply in the user's language.
     if lower_text.startswith("/plan"):
         content = remove_command(user_text, "/plan")
         if not content:
-            return "Please write what plan you need after /plan.\n\nExample:\n/plan 7 day content plan for ecommerce business"
+            return "Please write what plan you need after /plan.\n\nExample:\n/plan 7 day marketing plan for Pharmacy SaaS"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Create a clear step-by-step plan for:
 
 {content}
@@ -369,7 +480,7 @@ Reply in the user's language.
     if lower_text.startswith("/translate"):
         content = remove_command(user_text, "/translate")
         if not content:
-            return "Please write text after /translate.\n\nExample:\n/translate আমার ব্যবসার জন্য একটি পোস্ট লিখুন"
+            return "Please write text after /translate.\n\nExample:\n/translate Hospital software demo available"
         prompt = f"""
 Translate this text naturally. If it is Bangla, translate to English. If it is English, translate to Bangla.
 
@@ -383,8 +494,10 @@ Also make it clean and professional.
     if lower_text.startswith("/ad"):
         content = remove_command(user_text, "/ad")
         if not content:
-            return "Please write product/offer details after /ad.\n\nExample:\n/ad Canva Pro access 99 taka per month"
+            return "Please write product/offer details after /ad.\n\nExample:\n/ad Hospital SaaS monthly rental service for clinics"
         prompt = f"""
+{BUSINESS_CONTEXT}
+
 Create high-converting ad copy for:
 
 {content}
@@ -402,7 +515,44 @@ Reply in the user's language.
 """
         return ask_ai(prompt)
 
-    return ask_ai(user_text)
+    support_keywords = [
+        "service", "services", "support", "price", "pricing", "contact",
+        "hospital", "pharmacy", "saas", "demo", "software", "website",
+        "সার্ভিস", "সেবা", "দাম", "প্রাইস", "মূল্য", "যোগাযোগ", "সাপোর্ট",
+        "হাসপাতাল", "ফার্মেসি", "সফটওয়্যার", "সফটওয়্যার", "ডেমো",
+        "কি কি করেন", "কী কী করেন", "আপনারা কি করেন", "ওয়েবসাইট", "ওয়েবসাইট"
+    ]
+
+    if any(keyword in lower_text for keyword in support_keywords):
+        prompt = f"""
+{BUSINESS_CONTEXT}
+
+User asked:
+{user_text}
+
+Answer as MonirBot AI customer support for OnSkill IT.
+Explain our services clearly.
+If the user asks about Hospital SaaS, explain Hospital SaaS benefits.
+If the user asks about Pharmacy SaaS, explain Pharmacy SaaS benefits.
+If the question is about price, say pricing depends on requirement and ask for details.
+If the user asks for demo, ask for name, phone number, business type, and preferred demo time.
+Keep the reply helpful, polite, and business-friendly.
+Reply in the user's language.
+"""
+        return ask_ai(prompt)
+
+    prompt = f"""
+{BUSINESS_CONTEXT}
+
+User message:
+{user_text}
+
+Reply as MonirBot AI for OnSkill IT.
+If the user asks about our services, explain from the business context.
+If it is a normal request, answer normally.
+Reply in the user's language.
+"""
+    return ask_ai(prompt)
 
 
 def remove_command(text: str, command: str) -> str:
@@ -413,75 +563,342 @@ def get_help_message() -> str:
     return """
 🤖 MonirBot AI Commands
 
-Use these commands in WhatsApp:
-
+General:
 1️⃣ /help
 Show all commands.
 
-2️⃣ /post [topic]
+2️⃣ /about
+About MonirBot AI and OnSkill IT.
+
+3️⃣ /services
+Know our services.
+
+4️⃣ /hospital
+Hospital SaaS service details.
+
+5️⃣ /pharmacy
+Pharmacy SaaS service details.
+
+6️⃣ /support
+Customer support information.
+
+7️⃣ /faq
+Frequently asked questions.
+
+8️⃣ /price
+Pricing information.
+
+9️⃣ /demo
+Request demo information.
+
+🔟 /contact
+Contact information.
+
+1️⃣1️⃣ /policy
+Service policy.
+
+1️⃣2️⃣ /human
+Request human/admin support.
+
+Content & Marketing:
+1️⃣3️⃣ /post [topic]
 Create social media post for Facebook, Instagram, LinkedIn, Pinterest, Twitter/X.
 
-Example:
-/post Premium A2 Ghee offer, 10 lb tin, only $222
-
-3️⃣ /caption [topic]
+1️⃣4️⃣ /caption [topic]
 Create attractive caption with CTA and hashtags.
 
-Example:
-/caption Eid offer for abaya collection
-
-4️⃣ /hashtags [topic]
+1️⃣5️⃣ /hashtags [topic]
 Generate hashtags.
 
-Example:
-/hashtags ecommerce software tools business
-
-5️⃣ /customer [customer message]
-Create polite customer reply.
-
-Example:
-/customer দাম কত?
-
-6️⃣ /seo [topic]
-Create SEO title, meta description, keywords, FAQ ideas.
-
-Example:
-/seo optometry clinic local SEO service
-
-7️⃣ /product [product details]
-Create product title, description, benefits, CTA.
-
-Example:
-/product A2 Ghee 10 lb tin price $222
-
-8️⃣ /idea [topic]
-Generate business/content/marketing ideas.
-
-Example:
-/idea Facebook post ideas for software tools
-
-9️⃣ /plan [goal]
-Create step-by-step plan.
-
-Example:
-/plan 7 day marketing plan for my business
-
-🔟 /translate [text]
-Translate Bangla to English or English to Bangla.
-
-Example:
-/translate আমি আপনার অর্ডার কনফার্ম করছি
-
-1️⃣1️⃣ /ad [product/offer]
+1️⃣6️⃣ /ad [product/offer]
 Create ad copy for Facebook/Instagram/WhatsApp.
 
-Example:
-/ad Canva Pro access 99 taka monthly offer
+Customer Support:
+1️⃣7️⃣ /customer [customer message]
+Create polite customer reply.
 
-1️⃣2️⃣ /about
-About MonirBot AI.
+1️⃣8️⃣ /support-reply [issue]
+Create support reply for customer issue.
+
+SEO & Service Content:
+1️⃣9️⃣ /seo [topic]
+Create SEO title, meta description, keywords, FAQ ideas.
+
+2️⃣0️⃣ /product [product/service details]
+Create product/service title, description, benefits, CTA.
+
+Planning:
+2️⃣1️⃣ /idea [topic]
+Generate business/content/marketing ideas.
+
+2️⃣2️⃣ /plan [goal]
+Create step-by-step plan.
+
+Translation:
+2️⃣3️⃣ /translate [text]
+Translate Bangla to English or English to Bangla.
 
 You can also ask anything normally without command.
+
+Website:
+https://www.onskillit.com/
+"""
+
+
+def get_about_message() -> str:
+    return """
+🤖 About MonirBot AI
+
+MonirBot AI is a WhatsApp-based AI business and customer support assistant for OnSkill IT.
+
+OnSkill IT provides:
+✅ Hospital SaaS rental/service
+✅ Pharmacy SaaS rental/service
+✅ WhatsApp AI Assistant setup
+✅ AI customer support bot
+✅ Content, SEO, and digital support
+
+Website:
+https://www.onskillit.com/
+
+Type /services to know more.
+"""
+
+
+def get_services_message() -> str:
+    return """
+✅ Our Services — OnSkill IT / MonirBot AI
+
+1. Hospital SaaS Rental/Service
+Manage patient records, appointments, doctors, billing, prescriptions, reports, and daily hospital operations.
+
+2. Pharmacy SaaS Rental/Service
+Manage medicine stock, sales, purchase, expiry tracking, billing, customer records, and pharmacy reports.
+
+3. WhatsApp AI Assistant Setup
+AI bot setup for WhatsApp-based support and business automation.
+
+4. AI Customer Support Bot
+Automated customer reply system for common questions and support.
+
+5. Social Media Content Writing
+Facebook, Instagram, LinkedIn, Pinterest, Twitter/X post and caption writing.
+
+6. SEO Content Support
+SEO title, meta description, keyword ideas, blog outline, and service page content.
+
+7. Website/WordPress Content Support
+Website copy, blog content, product/service content.
+
+8. Future Upgrade
+Auto social media publishing using platform API connection.
+
+Website:
+https://www.onskillit.com/
+"""
+
+
+def get_hospital_saas_message() -> str:
+    return """
+🏥 Hospital SaaS Service
+
+OnSkill IT provides Hospital SaaS on rental/service basis.
+
+It can help hospitals and clinics manage:
+✅ Patient records
+✅ Appointments
+✅ Doctor management
+✅ Billing
+✅ Prescriptions
+✅ Reports
+✅ Daily hospital operations
+✅ Staff workflow
+
+Best for:
+- Clinics
+- Diagnostic centers
+- Small hospitals
+- Healthcare service providers
+
+For demo, type:
+/demo
+"""
+
+
+def get_pharmacy_saas_message() -> str:
+    return """
+💊 Pharmacy SaaS Service
+
+OnSkill IT provides Pharmacy SaaS on rental/service basis.
+
+It can help pharmacies manage:
+✅ Medicine stock
+✅ Sales
+✅ Purchase
+✅ Expiry tracking
+✅ Billing
+✅ Customer records
+✅ Supplier records
+✅ Daily reports
+
+Best for:
+- Pharmacy shops
+- Medicine stores
+- Healthcare product sellers
+- Small and medium pharmacy businesses
+
+For demo, type:
+/demo
+"""
+
+
+def get_support_message() -> str:
+    return """
+🛟 Customer Support
+
+How can we help you?
+
+You can ask about:
+- Hospital SaaS
+- Pharmacy SaaS
+- Demo request
+- Pricing
+- WhatsApp AI assistant
+- AI customer support bot
+- Social media content
+- SEO content
+- Website/WordPress support
+
+For human support, type:
+/human
+"""
+
+
+def get_faq_message() -> str:
+    return """
+❓ FAQ — OnSkill IT / MonirBot AI
+
+Q1: OnSkill IT কী service দেয়?
+A: Hospital SaaS, Pharmacy SaaS, WhatsApp AI Assistant, customer support bot, content, SEO, and website support.
+
+Q2: Hospital SaaS কী?
+A: Hospital/clinic management software service, যা patient, appointment, billing, doctor, prescription, report manage করতে help করে।
+
+Q3: Pharmacy SaaS কী?
+A: Pharmacy management software service, যা stock, sales, purchase, expiry, billing, customer record manage করতে help করে।
+
+Q4: Pricing কত?
+A: Pricing requirement, features, users, setup and support level অনুযায়ী হবে।
+
+Q5: Demo পাওয়া যাবে?
+A: হ্যাঁ, demo request করতে /demo লিখুন।
+
+Q6: PC বন্ধ থাকলেও bot কাজ করবে?
+A: হ্যাঁ, কারণ backend cloud hosting-এ চলে।
+
+Q7: Website কী?
+A: https://www.onskillit.com/
+"""
+
+
+def get_price_message() -> str:
+    return """
+💰 Pricing Information
+
+Pricing depends on your requirement.
+
+Cost may depend on:
+1. Hospital SaaS or Pharmacy SaaS
+2. Number of users
+3. Required features
+4. Setup/customization level
+5. Monthly support
+6. Training/support requirement
+7. Extra automation or AI integration
+
+Please share:
+Name:
+Phone:
+Business Type:
+Service Needed:
+Number of Users:
+Location:
+
+Then we can suggest the best package.
+"""
+
+
+def get_demo_message() -> str:
+    return """
+📅 Demo Request
+
+Sure, we can arrange a demo.
+
+Please send your details:
+
+Name:
+Phone:
+Business Name:
+Business Type: Hospital / Clinic / Pharmacy / Other
+Service Needed: Hospital SaaS / Pharmacy SaaS / AI Assistant
+Preferred Demo Time:
+Location:
+
+Our admin/team will review and contact you.
+"""
+
+
+def get_contact_message() -> str:
+    return """
+📞 Contact / Support
+
+Website:
+https://www.onskillit.com/
+
+For support, please send:
+
+Name:
+Phone:
+Business Name:
+Service Needed:
+Message:
+
+You can also type:
+/human
+
+Our team/admin will review your request.
+"""
+
+
+def get_policy_message() -> str:
+    return """
+📌 Service Policy
+
+1. We provide SaaS rental/service, AI assistant, content, customer support and automation setup services.
+2. Pricing depends on requirements, users, features and support level.
+3. AI replies depend on user input and connected tools.
+4. Social media auto-publishing requires platform API/token permission.
+5. Some platforms may require approval, paid API, or business verification.
+6. We do not sell user data.
+7. Users can stop using the assistant anytime.
+"""
+
+
+def get_human_support_message() -> str:
+    return """
+👤 Human Support Request
+
+Please send your details in this format:
+
+Name:
+Phone:
+Business Name:
+Business Type:
+Service Needed:
+Location:
+Message:
+
+Our admin/team will review your request.
 """
 
 
