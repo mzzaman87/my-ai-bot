@@ -17,7 +17,7 @@ SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "memory mode"
+        "mode": "memory read mode"
     }
 
 
@@ -52,12 +52,15 @@ async def receive_message(request: Request):
         if message.get("type") == "text":
             user_text = message["text"]["body"].strip()
 
-            # Memory save every message
+            previous_memory = get_memory(user_phone)
+
+            current_interest = detect_service_interest(user_text)
+
             save_memory(
                 whatsapp=user_phone,
                 last_message=user_text,
                 last_query=user_text,
-                service_interest=detect_service_interest(user_text)
+                service_interest=current_interest
             )
 
             lead_data = extract_lead_data(user_text)
@@ -69,7 +72,7 @@ async def receive_message(request: Request):
                     "আমাদের team/admin আপনার সাথে যোগাযোগ করবে।"
                 )
             else:
-                reply = handle_command(user_text)
+                reply = handle_command(user_text, previous_memory)
 
             send_whatsapp_message(user_phone, reply)
 
@@ -86,7 +89,7 @@ async def receive_message(request: Request):
         return {"status": "error", "message": str(e)}
 
 
-def handle_command(text: str) -> str:
+def handle_command(text: str, previous_memory=None) -> str:
     text_lower = text.lower().strip()
 
     if text_lower == "/help":
@@ -218,9 +221,20 @@ Email:
 আমাদের admin/team আপনার সাথে যোগাযোগ করবে।
 """
 
+    memory_line = ""
+
+    if previous_memory:
+        old_interest = previous_memory.get("service_interest", "")
+        if old_interest and old_interest != "General Inquiry":
+            memory_line = (
+                f"\n\n🧠 আমি দেখছি আপনি আগে {old_interest} নিয়ে জানতে চেয়েছিলেন।"
+                "\nআপনি চাইলে demo/price details জানতে পারেন।"
+            )
+
     return (
         "✅ MonirBot AI working.\n\n"
-        f"আপনি লিখেছেন: {text}\n\n"
+        f"আপনি লিখেছেন: {text}"
+        f"{memory_line}\n\n"
         "Command দেখতে /help লিখুন।"
     )
 
@@ -287,6 +301,32 @@ def extract_lead_data(text: str):
         return data
 
     return None
+
+
+def get_memory(whatsapp: str):
+    if not SHEET_WEBHOOK_URL:
+        print("SHEET_WEBHOOK_URL missing")
+        return None
+
+    try:
+        response = requests.get(
+            SHEET_WEBHOOK_URL,
+            params={"whatsapp": whatsapp},
+            timeout=15
+        )
+
+        print("Memory Read Response:", response.status_code, response.text)
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("status") == "found":
+                return data.get("memory")
+
+        return None
+
+    except Exception as e:
+        print("Memory read error:", str(e))
+        return None
 
 
 def save_lead_to_sheet(lead_data: dict):
