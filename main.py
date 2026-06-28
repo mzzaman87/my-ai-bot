@@ -10,13 +10,14 @@ app = FastAPI()
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
+SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 
 
 @app.get("/")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "safe test mode"
+        "mode": "stable command mode"
     }
 
 
@@ -55,10 +56,19 @@ async def receive_message(request: Request):
         user_phone = message["from"]
 
         if message.get("type") == "text":
-            user_text = message["text"]["body"]
+            user_text = message["text"]["body"].strip()
             print("User message:", user_text)
 
-            reply = f"✅ MonirBot AI working.\n\nআপনি লিখেছেন: {user_text}"
+            lead_data = extract_lead_data(user_text)
+            if lead_data:
+                save_lead_to_sheet(lead_data)
+                reply = (
+                    "✅ ধন্যবাদ! আপনার তথ্য গ্রহণ করা হয়েছে।\n\n"
+                    "আমাদের team/admin আপনার সাথে যোগাযোগ করবে।"
+                )
+            else:
+                reply = handle_command(user_text)
+
             send_whatsapp_message(user_phone, reply)
 
         else:
@@ -75,6 +85,202 @@ async def receive_message(request: Request):
             "status": "error",
             "message": str(e)
         }
+
+
+def handle_command(text: str) -> str:
+    text_lower = text.lower().strip()
+
+    if text_lower == "/help":
+        return """
+🤖 MonirBot AI Commands
+
+/help - সব command দেখুন
+/services - আমাদের services দেখুন
+/hospital - Hospital SaaS details
+/pharmacy - Pharmacy SaaS details
+/price - Pricing information
+/demo - Demo request format
+/contact - Contact information
+/human - Human support request
+
+আপনি normal message দিলেও bot reply করবে।
+"""
+
+    if text_lower == "/services":
+        return """
+✅ OnSkill IT Services
+
+1. Hospital SaaS rental/service
+2. Pharmacy SaaS rental/service
+3. WhatsApp AI Assistant setup
+4. AI Customer Support Bot
+5. Social Media Content Writing
+6. SEO Content Support
+7. Website/WordPress Content Support
+
+Website:
+https://www.onskillit.com/
+"""
+
+    if text_lower == "/hospital":
+        return """
+🏥 Hospital SaaS Service
+
+আমাদের Hospital SaaS hospital/clinic management সহজ করতে সাহায্য করে।
+
+Features:
+✅ Patient records
+✅ Appointment management
+✅ Doctor management
+✅ Billing
+✅ Prescription
+✅ Reports
+✅ Daily hospital operations
+
+Demo নিতে /demo লিখুন।
+"""
+
+    if text_lower == "/pharmacy":
+        return """
+💊 Pharmacy SaaS Service
+
+আমাদের Pharmacy SaaS pharmacy business manage করতে সাহায্য করে।
+
+Features:
+✅ Medicine stock
+✅ Sales
+✅ Purchase
+✅ Expiry tracking
+✅ Billing
+✅ Customer records
+✅ Supplier records
+✅ Reports
+
+Demo নিতে /demo লিখুন।
+"""
+
+    if text_lower == "/price":
+        return """
+💰 Pricing Information
+
+Pricing depend করে:
+1. Hospital SaaS না Pharmacy SaaS
+2. Number of users
+3. Required features
+4. Setup/customization
+5. Monthly support
+
+আপনার requirement জানাতে /demo লিখে details পাঠান।
+"""
+
+    if text_lower == "/demo":
+        return """
+📅 Demo Request
+
+Demo request করার জন্য নিচের format-এ তথ্য পাঠান:
+
+Name:
+Address:
+Phone:
+WhatsApp:
+Email:
+
+আপনার তথ্য পেলে আমাদের team/admin যোগাযোগ করবে।
+"""
+
+    if text_lower == "/contact":
+        return """
+📞 Contact
+
+Website:
+https://www.onskillit.com/
+
+Support request করতে নিচের format পাঠান:
+
+Name:
+Address:
+Phone:
+WhatsApp:
+Email:
+"""
+
+    if text_lower == "/human":
+        return """
+👤 Human Support Request
+
+Please send your details:
+
+Name:
+Address:
+Phone:
+WhatsApp:
+Email:
+
+আমাদের admin/team আপনার সাথে যোগাযোগ করবে।
+"""
+
+    return (
+        "✅ MonirBot AI working.\n\n"
+        f"আপনি লিখেছেন: {text}\n\n"
+        "Command দেখতে /help লিখুন।"
+    )
+
+
+def extract_lead_data(text: str):
+    lines = text.splitlines()
+
+    data = {
+        "name": "",
+        "address": "",
+        "phone": "",
+        "whatsapp": "",
+        "email": ""
+    }
+
+    found = False
+
+    for line in lines:
+        if ":" not in line:
+            continue
+
+        key, value = line.split(":", 1)
+        key = key.strip().lower()
+        value = value.strip()
+
+        if key == "name":
+            data["name"] = value
+            found = True
+        elif key == "address":
+            data["address"] = value
+            found = True
+        elif key == "phone":
+            data["phone"] = value
+            found = True
+        elif key in ["whatsapp", "whatsapps", "wa"]:
+            data["whatsapp"] = value
+            found = True
+        elif key == "email":
+            data["email"] = value
+            found = True
+
+    if found and (data["name"] or data["phone"] or data["whatsapp"] or data["email"]):
+        return data
+
+    return None
+
+
+def save_lead_to_sheet(lead_data: dict):
+    if not SHEET_WEBHOOK_URL:
+        print("SHEET_WEBHOOK_URL missing")
+        return False
+
+    try:
+        response = requests.post(SHEET_WEBHOOK_URL, json=lead_data, timeout=15)
+        print("Sheet API Response:", response.status_code, response.text)
+        return response.status_code == 200
+    except Exception as e:
+        print("Sheet save error:", str(e))
+        return False
 
 
 def send_whatsapp_message(to: str, message: str):
