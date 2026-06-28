@@ -17,7 +17,7 @@ SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "memory + social media + auto publish request mode"
+        "mode": "memory + social request save mode"
     }
 
 
@@ -62,14 +62,23 @@ async def receive_message(request: Request):
                 service_interest=current_interest
             )
 
+            social_data = extract_social_request(user_text)
             lead_data = extract_lead_data(user_text)
 
-            if lead_data:
+            if social_data:
+                save_social_request(social_data)
+                reply = (
+                    "✅ ধন্যবাদ! আপনার Social Media / Auto Publish request গ্রহণ করা হয়েছে।\n\n"
+                    "আমাদের team/admin আপনার সাথে যোগাযোগ করবে।"
+                )
+
+            elif lead_data:
                 save_lead_to_sheet(lead_data)
                 reply = (
                     "✅ ধন্যবাদ! আপনার তথ্য গ্রহণ করা হয়েছে।\n\n"
                     "আমাদের team/admin আপনার সাথে যোগাযোগ করবে।"
                 )
+
             else:
                 reply = handle_command(user_text, previous_memory)
 
@@ -193,6 +202,53 @@ Price জানতে /price লিখুন।
 """
 
     if (
+        text_lower == "/publish"
+        or "auto publish" in text_lower
+        or "autopublish" in text_lower
+        or "publish" in text_lower
+        or "schedule post" in text_lower
+        or "post schedule" in text_lower
+        or "automatic post" in text_lower
+        or "অটো পাবলিশ" in text_lower
+        or "পাবলিশ" in text_lower
+        or "শিডিউল" in text_lower
+    ):
+        return """
+🚀 Social Media Auto Publish Request
+
+আমরা social media auto publish setup support করতে পারি।
+
+Supported platforms:
+
+✅ Facebook Page
+✅ Instagram Business
+✅ LinkedIn Page/Profile
+✅ YouTube Community / Video Metadata Support
+✅ Pinterest
+✅ X/Twitter
+✅ WhatsApp Channel/Status planning
+✅ Website/WordPress blog publish support
+
+Auto publish request save করতে নিচের format পাঠান:
+
+Name:
+Business Name:
+Platform:
+Page/Profile Link:
+Product/Service:
+Post Topic:
+Tone:
+Posting Frequency:
+Content Type:
+Phone:
+WhatsApp:
+Email:
+
+Note:
+Actual auto publish চালু করতে platform API/token/admin access লাগবে।
+"""
+
+    if (
         text_lower == "/social"
         or text_lower == "/post"
         or "social media" in text_lower
@@ -233,79 +289,19 @@ Price জানতে /price লিখুন।
 ✅ Product Promotional Copy
 ✅ Festival/Offer Post Content
 
-Content request করার জন্য নিচের format-এ পাঠান:
+Content request save করতে নিচের format পাঠান:
 
+Name:
 Business Name:
 Platform:
 Product/Service:
 Post Topic:
 Tone:
-Contact:
-
-Example:
-
-Business Name: OnSkill IT
-Platform: Facebook
-Product/Service: Hospital SaaS
-Post Topic: Hospital software demo
-Tone: Professional
-Contact: 017xxxxxxxx
-
-Auto publish setup জানতে /publish লিখুন।
-"""
-
-    if (
-        text_lower == "/publish"
-        or "auto publish" in text_lower
-        or "autopublish" in text_lower
-        or "publish" in text_lower
-        or "schedule post" in text_lower
-        or "post schedule" in text_lower
-        or "automatic post" in text_lower
-        or "অটো পাবলিশ" in text_lower
-        or "পাবলিশ" in text_lower
-        or "শিডিউল" in text_lower
-    ):
-        return """
-🚀 Social Media Auto Publish Request
-
-আমরা social media auto publish setup support করতে পারি।
-
-Supported platforms:
-
-✅ Facebook Page
-✅ Instagram Business
-✅ LinkedIn Page/Profile
-✅ YouTube Community / Video Metadata Support
-✅ Pinterest
-✅ X/Twitter
-✅ WhatsApp Channel/Status planning
-✅ Website/WordPress blog publish support
-
-Auto publish setup করতে সাধারণত দরকার হয়:
-
-1. Platform name
-2. Page/Profile link
-3. Posting frequency
-4. Content type
-5. Admin/API access permission
-6. Approval system লাগবে কিনা
-
-Request পাঠানোর format:
-
-Name:
-Business Name:
-Platform:
-Page/Profile Link:
-Posting Frequency:
-Content Type:
 Phone:
 WhatsApp:
 Email:
 
-Note:
-Actual auto publish চালু করতে platform API/token/admin access লাগবে।
-আমাদের team/admin setup process complete করবে।
+Auto publish setup জানতে /publish লিখুন।
 """
 
     if (
@@ -445,6 +441,16 @@ def detect_service_interest(text: str) -> str:
         return "SEO Content Support"
 
     if (
+        "auto publish" in text_lower
+        or "publish" in text_lower
+        or "schedule post" in text_lower
+        or "অটো পাবলিশ" in text_lower
+        or "পাবলিশ" in text_lower
+        or "শিডিউল" in text_lower
+    ):
+        return "Social Media Auto Publish"
+
+    if (
         "social" in text_lower
         or "facebook" in text_lower
         or "instagram" in text_lower
@@ -464,16 +470,6 @@ def detect_service_interest(text: str) -> str:
         or "কনটেন্ট" in text_lower
     ):
         return "Social Media Content"
-
-    if (
-        "auto publish" in text_lower
-        or "publish" in text_lower
-        or "schedule post" in text_lower
-        or "অটো পাবলিশ" in text_lower
-        or "পাবলিশ" in text_lower
-        or "শিডিউল" in text_lower
-    ):
-        return "Social Media Auto Publish"
 
     if "service" in text_lower or "সার্ভিস" in text_lower:
         return "Services Inquiry"
@@ -524,6 +520,97 @@ def extract_lead_data(text: str):
     return None
 
 
+def extract_social_request(text: str):
+    lines = text.splitlines()
+
+    data = {
+        "name": "",
+        "business_name": "",
+        "platform": "",
+        "page_profile_link": "",
+        "product_service": "",
+        "post_topic": "",
+        "tone": "",
+        "posting_frequency": "",
+        "content_type": "",
+        "phone": "",
+        "whatsapp": "",
+        "email": "",
+        "request_type": "Social Media Content"
+    }
+
+    found = False
+
+    for line in lines:
+        if ":" not in line:
+            continue
+
+        key, value = line.split(":", 1)
+        key = key.strip().lower()
+        value = value.strip()
+
+        if key == "name":
+            data["name"] = value
+            found = True
+        elif key in ["business name", "business"]:
+            data["business_name"] = value
+            found = True
+        elif key == "platform":
+            data["platform"] = value
+            found = True
+        elif key in ["page/profile link", "page link", "profile link", "page"]:
+            data["page_profile_link"] = value
+            found = True
+        elif key in ["product/service", "product", "service"]:
+            data["product_service"] = value
+            found = True
+        elif key in ["post topic", "topic"]:
+            data["post_topic"] = value
+            found = True
+        elif key == "tone":
+            data["tone"] = value
+            found = True
+        elif key in ["posting frequency", "frequency"]:
+            data["posting_frequency"] = value
+            found = True
+        elif key in ["content type", "type"]:
+            data["content_type"] = value
+            found = True
+        elif key == "phone":
+            data["phone"] = value
+            found = True
+        elif key in ["whatsapp", "whatsapps", "wa"]:
+            data["whatsapp"] = value
+            found = True
+        elif key == "email":
+            data["email"] = value
+            found = True
+
+    text_lower = text.lower()
+
+    if (
+        "auto publish" in text_lower
+        or "publish" in text_lower
+        or "schedule" in text_lower
+        or "অটো পাবলিশ" in text_lower
+        or "পাবলিশ" in text_lower
+        or "শিডিউল" in text_lower
+    ):
+        data["request_type"] = "Auto Publish Request"
+
+    if found and (
+        data["business_name"]
+        or data["platform"]
+        or data["product_service"]
+        or data["post_topic"]
+        or data["content_type"]
+        or data["page_profile_link"]
+    ):
+        return data
+
+    return None
+
+
 def get_memory(whatsapp: str):
     if not SHEET_WEBHOOK_URL:
         print("SHEET_WEBHOOK_URL missing")
@@ -561,6 +648,22 @@ def save_lead_to_sheet(lead_data: dict):
         return response.status_code == 200
     except Exception as e:
         print("Lead save error:", str(e))
+        return False
+
+
+def save_social_request(social_data: dict):
+    if not SHEET_WEBHOOK_URL:
+        print("SHEET_WEBHOOK_URL missing")
+        return False
+
+    social_data["type"] = "social_request"
+
+    try:
+        response = requests.post(SHEET_WEBHOOK_URL, json=social_data, timeout=15)
+        print("Social Request Sheet Response:", response.status_code, response.text)
+        return response.status_code == 200
+    except Exception as e:
+        print("Social request save error:", str(e))
         return False
 
 
