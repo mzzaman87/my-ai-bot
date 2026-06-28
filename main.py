@@ -17,7 +17,7 @@ SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "memory read mode"
+        "mode": "memory read + natural price intent mode"
     }
 
 
@@ -161,18 +161,40 @@ Features:
 Demo নিতে /demo লিখুন।
 """
 
-    if text_lower == "/price":
+    if (
+        text_lower == "/price"
+        or "price" in text_lower
+        or "pricing" in text_lower
+        or "cost" in text_lower
+        or "charge" in text_lower
+        or "dam" in text_lower
+        or "koto" in text_lower
+        or "koto taka" in text_lower
+        or "কত" in text_lower
+        or "দাম" in text_lower
+        or "মূল্য" in text_lower
+        or "খরচ" in text_lower
+    ):
         return """
 💰 Pricing Information
 
 Pricing depend করে:
+
 1. Hospital SaaS না Pharmacy SaaS
 2. Number of users
 3. Required features
 4. Setup/customization
 5. Monthly support
 
-আপনার requirement জানাতে /demo লিখে details পাঠান।
+আপনার exact price জানতে নিচের format-এ details পাঠান:
+
+Name:
+Address:
+Phone:
+WhatsApp:
+Email:
+
+আমাদের team/admin আপনার requirement দেখে price জানাবে।
 """
 
     if text_lower == "/demo":
