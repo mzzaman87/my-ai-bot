@@ -17,7 +17,7 @@ SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "stable command mode"
+        "mode": "memory mode"
     }
 
 
@@ -29,15 +29,10 @@ async def verify_webhook(request: Request):
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
 
-    print("Webhook verify request:", dict(params))
-
     if mode == "subscribe" and token == VERIFY_TOKEN:
         return int(challenge)
 
-    return {
-        "error": "verification failed",
-        "received_token": token
-    }
+    return {"error": "verification failed"}
 
 
 @app.post("/webhook")
@@ -49,7 +44,6 @@ async def receive_message(request: Request):
         value = data["entry"][0]["changes"][0]["value"]
 
         if "messages" not in value:
-            print("No message found")
             return {"status": "no message"}
 
         message = value["messages"][0]
@@ -57,9 +51,17 @@ async def receive_message(request: Request):
 
         if message.get("type") == "text":
             user_text = message["text"]["body"].strip()
-            print("User message:", user_text)
+
+            # Memory save every message
+            save_memory(
+                whatsapp=user_phone,
+                last_message=user_text,
+                last_query=user_text,
+                service_interest=detect_service_interest(user_text)
+            )
 
             lead_data = extract_lead_data(user_text)
+
             if lead_data:
                 save_lead_to_sheet(lead_data)
                 reply = (
@@ -81,10 +83,7 @@ async def receive_message(request: Request):
 
     except Exception as e:
         print("Webhook error:", str(e))
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}
 
 
 def handle_command(text: str) -> str:
@@ -226,6 +225,27 @@ Email:
     )
 
 
+def detect_service_interest(text: str) -> str:
+    text_lower = text.lower()
+
+    if "hospital" in text_lower or "clinic" in text_lower or "হাসপাতাল" in text_lower:
+        return "Hospital SaaS"
+
+    if "pharmacy" in text_lower or "medicine" in text_lower or "ফার্মেসি" in text_lower:
+        return "Pharmacy SaaS"
+
+    if "whatsapp" in text_lower or "bot" in text_lower or "ai assistant" in text_lower:
+        return "WhatsApp AI Assistant"
+
+    if "seo" in text_lower:
+        return "SEO Content Support"
+
+    if "social" in text_lower or "facebook" in text_lower or "post" in text_lower:
+        return "Social Media Content"
+
+    return "General Inquiry"
+
+
 def extract_lead_data(text: str):
     lines = text.splitlines()
 
@@ -276,10 +296,33 @@ def save_lead_to_sheet(lead_data: dict):
 
     try:
         response = requests.post(SHEET_WEBHOOK_URL, json=lead_data, timeout=15)
-        print("Sheet API Response:", response.status_code, response.text)
+        print("Lead Sheet Response:", response.status_code, response.text)
         return response.status_code == 200
     except Exception as e:
-        print("Sheet save error:", str(e))
+        print("Lead save error:", str(e))
+        return False
+
+
+def save_memory(whatsapp: str, last_message: str, last_query: str, service_interest: str):
+    if not SHEET_WEBHOOK_URL:
+        print("SHEET_WEBHOOK_URL missing")
+        return False
+
+    memory_data = {
+        "type": "memory",
+        "name": "",
+        "whatsapp": whatsapp,
+        "last_message": last_message,
+        "last_query": last_query,
+        "service_interest": service_interest
+    }
+
+    try:
+        response = requests.post(SHEET_WEBHOOK_URL, json=memory_data, timeout=15)
+        print("Memory Sheet Response:", response.status_code, response.text)
+        return response.status_code == 200
+    except Exception as e:
+        print("Memory save error:", str(e))
         return False
 
 
