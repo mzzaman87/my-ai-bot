@@ -17,7 +17,7 @@ SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "memory read + natural price intent mode"
+        "mode": "memory read + natural intent mode"
     }
 
 
@@ -53,7 +53,6 @@ async def receive_message(request: Request):
             user_text = message["text"]["body"].strip()
 
             previous_memory = get_memory(user_phone)
-
             current_interest = detect_service_interest(user_text)
 
             save_memory(
@@ -108,7 +107,17 @@ def handle_command(text: str, previous_memory=None) -> str:
 আপনি normal message দিলেও bot reply করবে।
 """
 
-    if text_lower == "/services":
+    if (
+        text_lower == "/services"
+        or "service" in text_lower
+        or "services" in text_lower
+        or "ki ki" in text_lower
+        or "gulo ki" in text_lower
+        or "onskill" in text_lower
+        or "সার্ভিস" in text_lower
+        or "কি কি" in text_lower
+        or "সেবা" in text_lower
+    ):
         return """
 ✅ OnSkill IT Services
 
@@ -122,9 +131,18 @@ def handle_command(text: str, previous_memory=None) -> str:
 
 Website:
 https://www.onskillit.com/
+
+Demo নিতে /demo লিখুন।
+Price জানতে /price লিখুন।
 """
 
-    if text_lower == "/hospital":
+    if (
+        text_lower == "/hospital"
+        or "hospital" in text_lower
+        or "clinic" in text_lower
+        or "হাসপাতাল" in text_lower
+        or "ক্লিনিক" in text_lower
+    ):
         return """
 🏥 Hospital SaaS Service
 
@@ -140,9 +158,16 @@ Features:
 ✅ Daily hospital operations
 
 Demo নিতে /demo লিখুন।
+Price জানতে /price লিখুন।
 """
 
-    if text_lower == "/pharmacy":
+    if (
+        text_lower == "/pharmacy"
+        or "pharmacy" in text_lower
+        or "medicine" in text_lower
+        or "ফার্মেসি" in text_lower
+        or "মেডিসিন" in text_lower
+    ):
         return """
 💊 Pharmacy SaaS Service
 
@@ -159,6 +184,7 @@ Features:
 ✅ Reports
 
 Demo নিতে /demo লিখুন।
+Price জানতে /price লিখুন।
 """
 
     if (
@@ -197,7 +223,12 @@ Email:
 আমাদের team/admin আপনার requirement দেখে price জানাবে।
 """
 
-    if text_lower == "/demo":
+    if (
+        text_lower == "/demo"
+        or "demo" in text_lower
+        or "ডেমো" in text_lower
+        or "দেখতে চাই" in text_lower
+    ):
         return """
 📅 Demo Request
 
@@ -212,7 +243,13 @@ Email:
 আপনার তথ্য পেলে আমাদের team/admin যোগাযোগ করবে।
 """
 
-    if text_lower == "/contact":
+    if (
+        text_lower == "/contact"
+        or "contact" in text_lower
+        or "phone" in text_lower
+        or "যোগাযোগ" in text_lower
+        or "কন্টাক্ট" in text_lower
+    ):
         return """
 📞 Contact
 
@@ -228,7 +265,14 @@ WhatsApp:
 Email:
 """
 
-    if text_lower == "/human":
+    if (
+        text_lower == "/human"
+        or "human" in text_lower
+        or "admin" in text_lower
+        or "support" in text_lower
+        or "মানুষ" in text_lower
+        or "এডমিন" in text_lower
+    ):
         return """
 👤 Human Support Request
 
@@ -264,10 +308,10 @@ Email:
 def detect_service_interest(text: str) -> str:
     text_lower = text.lower()
 
-    if "hospital" in text_lower or "clinic" in text_lower or "হাসপাতাল" in text_lower:
+    if "hospital" in text_lower or "clinic" in text_lower or "হাসপাতাল" in text_lower or "ক্লিনিক" in text_lower:
         return "Hospital SaaS"
 
-    if "pharmacy" in text_lower or "medicine" in text_lower or "ফার্মেসি" in text_lower:
+    if "pharmacy" in text_lower or "medicine" in text_lower or "ফার্মেসি" in text_lower or "মেডিসিন" in text_lower:
         return "Pharmacy SaaS"
 
     if "whatsapp" in text_lower or "bot" in text_lower or "ai assistant" in text_lower:
@@ -278,6 +322,9 @@ def detect_service_interest(text: str) -> str:
 
     if "social" in text_lower or "facebook" in text_lower or "post" in text_lower:
         return "Social Media Content"
+
+    if "service" in text_lower or "সার্ভিস" in text_lower:
+        return "Services Inquiry"
 
     return "General Inquiry"
 
