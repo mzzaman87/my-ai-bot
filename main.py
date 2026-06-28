@@ -1,52 +1,84 @@
-from fastapi import FastAPI, Request
+import os
 import requests
+from fastapi import FastAPI, Request
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
-# ================= CONFIG =================
-VERIFY_TOKEN = "monirbot_verify"
+WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
+VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 
-WHATSAPP_TOKEN = "YOUR_WHATSAPP_TOKEN"
-PHONE_NUMBER_ID = "YOUR_PHONE_NUMBER_ID"
 
-# ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI running"}
+    return {
+        "status": "MonirBot AI is running",
+        "mode": "safe test mode"
+    }
 
-# ================= WEBHOOK VERIFY =================
+
 @app.get("/webhook")
-def verify(hub_mode: str = None, hub_verify_token: str = None, hub_challenge: str = None):
+async def verify_webhook(request: Request):
+    params = request.query_params
 
-    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
-        return int(hub_challenge)
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
 
-    return "Invalid verify token"
+    print("Webhook verify request:", dict(params))
 
-# ================= RECEIVE MESSAGE =================
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return int(challenge)
+
+    return {
+        "error": "verification failed",
+        "received_token": token
+    }
+
+
 @app.post("/webhook")
-async def webhook(req: Request):
-    data = await req.json()
+async def receive_message(request: Request):
+    data = await request.json()
+    print("Incoming webhook data:", data)
 
     try:
-        message = data["entry"][0]["changes"][0]["value"]["messages"][0]
+        value = data["entry"][0]["changes"][0]["value"]
 
-        user_number = message["from"]
-        user_text = message["text"]["body"]
+        if "messages" not in value:
+            print("No message found")
+            return {"status": "no message"}
 
-        reply = f"আপনি লিখেছেন: {user_text}"
+        message = value["messages"][0]
+        user_phone = message["from"]
 
-        send_whatsapp_message(user_number, reply)
+        if message.get("type") == "text":
+            user_text = message["text"]["body"]
+            print("User message:", user_text)
 
-        return {"status": "sent"}
+            reply = f"✅ MonirBot AI working.\n\nআপনি লিখেছেন: {user_text}"
+            send_whatsapp_message(user_phone, reply)
+
+        else:
+            send_whatsapp_message(
+                user_phone,
+                "✅ MonirBot AI working. এখন শুধু text message support করছে।"
+            )
+
+        return {"status": "success"}
 
     except Exception as e:
-        print("Error:", e)
-        return {"status": "error"}
+        print("Webhook error:", str(e))
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
-# ================= SEND MESSAGE =================
-def send_whatsapp_message(to, message):
-    url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
+
+def send_whatsapp_message(to: str, message: str):
+    url = f"https://graph.facebook.com/v25.0/{PHONE_NUMBER_ID}/messages"
 
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
@@ -57,7 +89,13 @@ def send_whatsapp_message(to, message):
         "messaging_product": "whatsapp",
         "to": to,
         "type": "text",
-        "text": {"body": message}
+        "text": {
+            "body": message[:4000]
+        }
     }
 
-    requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload)
+
+    print("WhatsApp API Response:", response.status_code, response.text)
+
+    return response
