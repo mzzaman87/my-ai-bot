@@ -17,7 +17,7 @@ SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 def home():
     return {
         "status": "MonirBot AI is running",
-        "mode": "memory read + natural intent mode"
+        "mode": "memory + social media + auto publish request mode"
     }
 
 
@@ -103,8 +103,11 @@ def handle_command(text: str, previous_memory=None) -> str:
 /demo - Demo request format
 /contact - Contact information
 /human - Human support request
+/social - Social media content service
+/post - Social media post writing service
+/publish - Social media auto publish request
 
-আপনি normal message দিলেও bot reply করবে।
+আপনি normal message দিলেও bot বুঝে reply করবে।
 """
 
     if (
@@ -128,12 +131,14 @@ def handle_command(text: str, previous_memory=None) -> str:
 5. Social Media Content Writing
 6. SEO Content Support
 7. Website/WordPress Content Support
+8. Social Media Auto Publishing Setup
 
 Website:
 https://www.onskillit.com/
 
 Demo নিতে /demo লিখুন।
 Price জানতে /price লিখুন।
+Social media support জানতে /social লিখুন।
 """
 
     if (
@@ -188,6 +193,122 @@ Price জানতে /price লিখুন।
 """
 
     if (
+        text_lower == "/social"
+        or text_lower == "/post"
+        or "social media" in text_lower
+        or "facebook post" in text_lower
+        or "instagram" in text_lower
+        or "linkedin" in text_lower
+        or "tiktok" in text_lower
+        or "youtube" in text_lower
+        or "pinterest" in text_lower
+        or "twitter" in text_lower
+        or "x post" in text_lower
+        or "caption" in text_lower
+        or "content" in text_lower
+        or "post likhe" in text_lower
+        or "post chai" in text_lower
+        or "সোশ্যাল" in text_lower
+        or "ফেসবুক" in text_lower
+        or "ইনস্টাগ্রাম" in text_lower
+        or "ইউটিউব" in text_lower
+        or "ক্যাপশন" in text_lower
+        or "পোস্ট" in text_lower
+        or "কনটেন্ট" in text_lower
+    ):
+        return """
+📱 Social Media Content Support
+
+আমরা যেসব platform-এর content support করি:
+
+✅ Facebook Post
+✅ Instagram Caption
+✅ LinkedIn Post
+✅ TikTok Caption
+✅ YouTube Title, Description & Tags
+✅ Pinterest Pin Title & Description
+✅ X/Twitter Post
+✅ WhatsApp Status Content
+✅ Short Video Script
+✅ Product Promotional Copy
+✅ Festival/Offer Post Content
+
+Content request করার জন্য নিচের format-এ পাঠান:
+
+Business Name:
+Platform:
+Product/Service:
+Post Topic:
+Tone:
+Contact:
+
+Example:
+
+Business Name: OnSkill IT
+Platform: Facebook
+Product/Service: Hospital SaaS
+Post Topic: Hospital software demo
+Tone: Professional
+Contact: 017xxxxxxxx
+
+Auto publish setup জানতে /publish লিখুন।
+"""
+
+    if (
+        text_lower == "/publish"
+        or "auto publish" in text_lower
+        or "autopublish" in text_lower
+        or "publish" in text_lower
+        or "schedule post" in text_lower
+        or "post schedule" in text_lower
+        or "automatic post" in text_lower
+        or "অটো পাবলিশ" in text_lower
+        or "পাবলিশ" in text_lower
+        or "শিডিউল" in text_lower
+    ):
+        return """
+🚀 Social Media Auto Publish Request
+
+আমরা social media auto publish setup support করতে পারি।
+
+Supported platforms:
+
+✅ Facebook Page
+✅ Instagram Business
+✅ LinkedIn Page/Profile
+✅ YouTube Community / Video Metadata Support
+✅ Pinterest
+✅ X/Twitter
+✅ WhatsApp Channel/Status planning
+✅ Website/WordPress blog publish support
+
+Auto publish setup করতে সাধারণত দরকার হয়:
+
+1. Platform name
+2. Page/Profile link
+3. Posting frequency
+4. Content type
+5. Admin/API access permission
+6. Approval system লাগবে কিনা
+
+Request পাঠানোর format:
+
+Name:
+Business Name:
+Platform:
+Page/Profile Link:
+Posting Frequency:
+Content Type:
+Phone:
+WhatsApp:
+Email:
+
+Note:
+Actual auto publish চালু করতে platform API/token/admin access লাগবে।
+আমাদের team/admin setup process complete করবে।
+"""
+
+    if (
         text_lower == "/price"
         or "price" in text_lower
         or "pricing" in text_lower
@@ -207,10 +328,13 @@ Price জানতে /price লিখুন।
 Pricing depend করে:
 
 1. Hospital SaaS না Pharmacy SaaS
-2. Number of users
-3. Required features
-4. Setup/customization
-5. Monthly support
+2. WhatsApp AI Assistant setup
+3. Social Media Content Writing
+4. Social Media Auto Publishing Setup
+5. Number of platforms/users
+6. Required features
+7. Setup/customization
+8. Monthly support
 
 আপনার exact price জানতে নিচের format-এ details পাঠান:
 
@@ -320,8 +444,36 @@ def detect_service_interest(text: str) -> str:
     if "seo" in text_lower:
         return "SEO Content Support"
 
-    if "social" in text_lower or "facebook" in text_lower or "post" in text_lower:
+    if (
+        "social" in text_lower
+        or "facebook" in text_lower
+        or "instagram" in text_lower
+        or "linkedin" in text_lower
+        or "tiktok" in text_lower
+        or "youtube" in text_lower
+        or "pinterest" in text_lower
+        or "twitter" in text_lower
+        or "caption" in text_lower
+        or "post" in text_lower
+        or "content" in text_lower
+        or "সোশ্যাল" in text_lower
+        or "ফেসবুক" in text_lower
+        or "ইনস্টাগ্রাম" in text_lower
+        or "ইউটিউব" in text_lower
+        or "পোস্ট" in text_lower
+        or "কনটেন্ট" in text_lower
+    ):
         return "Social Media Content"
+
+    if (
+        "auto publish" in text_lower
+        or "publish" in text_lower
+        or "schedule post" in text_lower
+        or "অটো পাবলিশ" in text_lower
+        or "পাবলিশ" in text_lower
+        or "শিডিউল" in text_lower
+    ):
+        return "Social Media Auto Publish"
 
     if "service" in text_lower or "সার্ভিস" in text_lower:
         return "Services Inquiry"
