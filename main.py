@@ -11,28 +11,33 @@ WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI running"}
+    return {"status": "MonirBot AI Running 🚀"}
 
 
-# ================= VERIFY =================
+# ================= WEBHOOK VERIFY =================
 @app.get("/webhook")
-async def verify_webhook(request: Request):
-    params = request.query_params
+def verify(request: Request):
 
-    if params.get("hub.mode") == "subscribe" and params.get("hub.verify_token") == VERIFY_TOKEN:
-        return int(params.get("hub.challenge"))
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
 
-    return {"error": "verification failed"}
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return int(challenge)
+
+    return {"status": "failed"}
 
 
 # ================= MAIN WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
+
     data = await request.json()
 
     try:
@@ -60,35 +65,79 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= COMMANDS =================
+# ================= COMMAND SYSTEM =================
 def handle_command(text: str):
 
+    # 🔥 AI FIRST (SMART BRAIN)
+    ai = ask_ai(text)
+    if ai:
+        return ai
+
+    # HELP
     if "/help" in text:
         return "Commands: /services /price /social /publish"
 
+    # SERVICES
     if "/services" in text or "service" in text:
-        return "We provide SaaS, AI Bot, Social Media services."
+        return "We provide SaaS, AI Bot, Social Media & Automation services."
 
-    if "/price" in text or "price" in text:
+    # PRICE
+    if "/price" in text or "price" in text or "cost" in text:
         return "Price depends on requirements. Send details."
 
+    # SOCIAL
     if "/social" in text or "caption" in text or "post" in text:
         return social_reply(text)
 
+    # PUBLISH
     if "/publish" in text or "auto publish" in text:
         return publish_reply()
 
-    return "MonirBot AI working. Type /help"
+    return "MonirBot AI working 🤖 Type /help"
 
 
-# ================= SOCIAL =================
+# ================= AI FUNCTION =================
+def ask_ai(prompt: str):
+
+    if not GEMINI_API_KEY:
+        return None
+
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
+    }
+
+    try:
+        res = requests.post(url, json=payload, timeout=10)
+        data = res.json()
+
+        return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    except:
+        return None
+
+
+# ================= SOCIAL REPLY =================
 def social_reply(text: str):
 
     if "pharmacy" in text:
-        return "💊 Pharmacy post: Stay healthy with trusted medicine. #health #pharmacy"
+        return """💊 Pharmacy Post:
+Stay healthy with trusted medicine.
+
+#pharmacy #health #medicine"""
 
     if "hospital" in text:
-        return "🏥 Hospital post: Best healthcare for everyone. #hospital #health"
+        return """🏥 Hospital Post:
+Best healthcare services for everyone.
+
+#hospital #health #care"""
 
     return "Send: Instagram caption + topic (e.g. pharmacy offer)"
 
@@ -98,7 +147,7 @@ def publish_reply():
     return """
 🚀 Auto Publish System
 
-Send details:
+Send:
 - Platform
 - Page link
 - Content type
@@ -117,7 +166,7 @@ def save_memory(phone, text):
             "type": "memory",
             "whatsapp": phone,
             "message": text
-        })
+        }, timeout=5)
     except:
         pass
 
@@ -139,4 +188,7 @@ def send_whatsapp(to, message):
         "text": {"body": message}
     }
 
-    requests.post(url, headers=headers, json=payload)
+    try:
+        requests.post(url, headers=headers, json=payload, timeout=10)
+    except:
+        pass
