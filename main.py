@@ -17,10 +17,24 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI SaaS Running 🚀"}
+    return {"status": "MonirBot AI SaaS LIVE 🚀"}
 
 
-# ================= VERIFY =================
+# ================= ADMIN PANEL =================
+@app.get("/admin")
+def admin_panel():
+    return {
+        "status": "Admin Panel Active",
+        "features": [
+            "Leads",
+            "Memory",
+            "Social Requests",
+            "AI System"
+        ]
+    }
+
+
+# ================= VERIFY WEBHOOK =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -59,7 +73,7 @@ async def webhook(request: Request):
             reply = ask_ai(text)
 
             if not reply:
-                reply = fallback_reply(text)
+                reply = fallback(text)
 
             send_whatsapp(user, reply)
 
@@ -77,26 +91,29 @@ def ask_ai(prompt: str):
         return None
 
     system_prompt = """
-You are MonirBot AI, a SaaS business assistant for OnSkill IT.
+You are MonirBot AI SaaS Assistant.
 
 You help with:
 - Hospital SaaS
 - Pharmacy SaaS
-- Social media content
-- Pricing explanation
-- Business automation
+- Social Media Content
+- Business Automation
+- Pricing & Sales
 
-Reply short, clear, professional.
+Always reply:
+- Short
+- Professional
+- Business focused
 """
-
-    final_prompt = system_prompt + "\nUser: " + prompt
 
     url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
     payload = {
         "contents": [
             {
-                "parts": [{"text": final_prompt}]
+                "parts": [
+                    {"text": system_prompt + "\nUser: " + prompt}
+                ]
             }
         ]
     }
@@ -112,26 +129,23 @@ Reply short, clear, professional.
 # ================= INTENT =================
 def detect_intent(text: str):
 
-    text = text.lower()
-
     if "price" in text or "cost" in text or "koto" in text:
         return "pricing"
 
     if "hospital" in text:
-        return "hospital_saas"
+        return "hospital"
 
     if "pharmacy" in text:
-        return "pharmacy_saas"
+        return "pharmacy"
 
-    if "caption" in text or "post" in text:
+    if "social" in text or "caption" in text:
         return "marketing"
 
     return "general"
 
 
-# ================= LEAD CHECK =================
+# ================= LEAD =================
 def is_lead(text: str):
-
     keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
 
     for k in keywords:
@@ -174,7 +188,7 @@ def save_memory(phone, text, intent):
 
 
 # ================= FALLBACK =================
-def fallback_reply(text: str):
+def fallback(text: str):
 
     if "hospital" in text:
         return "🏥 Hospital SaaS available. Contact for demo."
@@ -186,9 +200,9 @@ def fallback_reply(text: str):
         return "💰 Price depends on requirements. Send details."
 
     if "social" in text:
-        return "📱 We create social media content for all platforms."
+        return "📱 Social media content service available."
 
-    return "🤖 MonirBot AI working. Type your requirement."
+    return "🤖 MonirBot AI working. Type /help"
 
 
 # ================= WHATSAPP SEND =================
