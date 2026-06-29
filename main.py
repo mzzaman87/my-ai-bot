@@ -250,6 +250,21 @@ Actual auto publish চালু করতে platform API/token/admin access �
 
     if (
         text_lower == "/social"
+        if "caption" in text_lower or "post" in text_lower or "content" in text_lower:
+         return """
+       🤖 AI Content Generator
+
+        আমরা আপনার জন্য ready post বানাতে পারি।
+
+        Example লিখুন:
+       👉 Instagram caption chai pharmacy offer er jonno
+       👉 Facebook post chai hospital service er jonno
+
+         ✔ Caption
+        ✔ Hashtags
+        ✔ CTA
+        ✔ Engagement optimized post
+           """
         or text_lower == "/post"
         or "social media" in text_lower
         or "facebook post" in text_lower
