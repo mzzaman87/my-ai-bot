@@ -19,7 +19,7 @@ def home():
     return {"status": "MonirBot AI running"}
 
 
-# ================= WEBHOOK VERIFY =================
+# ================= VERIFY =================
 @app.get("/webhook")
 async def verify_webhook(request: Request):
     params = request.query_params
@@ -32,7 +32,7 @@ async def verify_webhook(request: Request):
 
 # ================= MAIN WEBHOOK =================
 @app.post("/webhook")
-async def receive_message(request: Request):
+async def webhook(request: Request):
     data = await request.json()
 
     try:
@@ -41,75 +41,74 @@ async def receive_message(request: Request):
         if "messages" not in value:
             return {"status": "no message"}
 
-        message = value["messages"][0]
-        user_phone = message["from"]
+        msg = value["messages"][0]
+        user = msg["from"]
 
-        if message["type"] == "text":
-            text = message["text"]["body"].lower()
+        if msg["type"] == "text":
+            text = msg["text"]["body"].lower()
 
-            save_memory(user_phone, text)
+            save_memory(user, text)
 
             reply = handle_command(text)
 
-            send_whatsapp_message(user_phone, reply)
+            send_whatsapp(user, reply)
 
-        return {"status": "success"}
+        return {"status": "ok"}
 
     except Exception as e:
-        print("Error:", str(e))
+        print("ERROR:", e)
         return {"status": "error"}
 
 
-# ================= COMMAND HANDLER =================
+# ================= COMMANDS =================
 def handle_command(text: str):
-     if "caption" in text or "post" in text or "content" in text:
-    return generate_ai_post(text)
-    # HELP
+
     if "/help" in text:
         return "Commands: /services /price /social /publish"
 
-    # SERVICES
     if "/services" in text or "service" in text:
-        return "We provide SaaS, AI bot, Social media content services."
+        return "We provide SaaS, AI Bot, Social Media services."
 
-    # PRICE
-    if "/price" in text or "price" in text or "cost" in text:
+    if "/price" in text or "price" in text:
         return "Price depends on requirements. Send details."
 
-    # SOCIAL CONTENT
     if "/social" in text or "caption" in text or "post" in text:
-        return """
-📱 Social Media Service
+        return social_reply(text)
 
-We create:
-- Facebook posts
-- Instagram captions
-- LinkedIn posts
-- YouTube titles
-- TikTok captions
-
-Send:
-Business name + platform + topic
-"""
-
-    # AUTO PUBLISH
     if "/publish" in text or "auto publish" in text:
-        return """
-🚀 Auto Publish Service
+        return publish_reply()
 
-We support:
-Facebook, Instagram, LinkedIn, YouTube
+    return "MonirBot AI working. Type /help"
+
+
+# ================= SOCIAL =================
+def social_reply(text: str):
+
+    if "pharmacy" in text:
+        return "💊 Pharmacy post: Stay healthy with trusted medicine. #health #pharmacy"
+
+    if "hospital" in text:
+        return "🏥 Hospital post: Best healthcare for everyone. #hospital #health"
+
+    return "Send: Instagram caption + topic (e.g. pharmacy offer)"
+
+
+# ================= PUBLISH =================
+def publish_reply():
+    return """
+🚀 Auto Publish System
 
 Send details:
-Page link + frequency + content type
+- Platform
+- Page link
+- Content type
+- Frequency
 """
-
-    # DEFAULT
-    return "MonirBot AI working. Type /help"
 
 
 # ================= MEMORY =================
 def save_memory(phone, text):
+
     if not SHEET_WEBHOOK_URL:
         return
 
@@ -124,7 +123,7 @@ def save_memory(phone, text):
 
 
 # ================= WHATSAPP SEND =================
-def send_whatsapp_message(to, message):
+def send_whatsapp(to, message):
 
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
 
@@ -141,52 +140,3 @@ def send_whatsapp_message(to, message):
     }
 
     requests.post(url, headers=headers, json=payload)
-def generate_ai_post(text: str):
-
-    text = text.lower()
-
-    if "pharmacy" in text:
-        return """
-💊 Pharmacy Instagram Caption
-
-"Your Health, Our Priority 💙
-Get quality medicines at affordable prices!
-
-📦 Fast Delivery
-💊 Trusted Pharmacy
-💰 Best Offers Available
-
-👉 Order Now & Stay Healthy!"
-
-#Hashtags
-#Pharmacy #HealthCare #Medicine #StayHealthy #Wellness
-"""
-
-    if "hospital" in text:
-        return """
-🏥 Hospital Service Caption
-
-"Advanced Healthcare for Everyone ❤️
-Expert doctors & modern facilities.
-
-🩺 24/7 Service
-🏥 Trusted Care
-💙 Your Health Matters
-
-👉 Book Appointment Today!"
-
-#Hashtags
-#Hospital #Healthcare #Doctors #Health
-"""
-
-    return """
-🤖 AI Content Generator
-
-Please specify:
-- Platform (Facebook / Instagram / LinkedIn)
-- Topic
-- Business type
-
-Example:
-"Instagram caption for fashion brand"
-"""
