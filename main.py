@@ -12,6 +12,7 @@ PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 # ================= HOME =================
@@ -25,12 +26,12 @@ def home():
 def admin():
     return {
         "status": "Admin Panel Active",
-        "system": "MonirBot SaaS AI",
+        "system": "MonirBot AI SaaS",
         "modules": ["AI", "Memory", "Lead", "Social", "Automation"]
     }
 
 
-# ================= VERIFY =================
+# ================= WEBHOOK VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -40,7 +41,7 @@ def verify(request: Request):
     return {"status": "failed"}
 
 
-# ================= WEBHOOK =================
+# ================= MAIN WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
@@ -68,9 +69,6 @@ async def webhook(request: Request):
 
             reply = ask_ai(text)
 
-            if not reply:
-                reply = fallback(text)
-
             send_whatsapp(user, reply)
 
         return {"status": "ok"}
@@ -80,50 +78,80 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= CLAUDE AI =================
+# ================= HYBRID AI ENGINE =================
 def ask_ai(prompt: str):
-
-    if not CLAUDE_API_KEY:
-        return None
-
-    url = "https://api.anthropic.com/v1/messages"
-
-    headers = {
-        "x-api-key": CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json"
-    }
 
     system_prompt = """
 You are MonirBot AI SaaS Assistant.
 
-You help with:
+You help users with:
 - Hospital SaaS
 - Pharmacy SaaS
+- Marketing
+- Pricing
 - Business automation
-- Social media content
-- Pricing & sales
 
-Reply short, clear, professional.
+Reply:
+- Short
+- Smart
+- Professional
 """
 
-    payload = {
-        "model": "claude-3-haiku-20240307",
-        "max_tokens": 500,
-        "messages": [
-            {
-                "role": "user",
-                "content": system_prompt + "\nUser: " + prompt
-            }
-        ]
-    }
-
+    # ================= CLAUDE FIRST =================
     try:
-        res = requests.post(url, headers=headers, json=payload, timeout=10)
-        data = res.json()
-        return data["content"][0]["text"]
+        if CLAUDE_API_KEY:
+            url = "https://api.anthropic.com/v1/messages"
+
+            headers = {
+                "x-api-key": CLAUDE_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+
+            payload = {
+                "model": "claude-3-haiku-20240307",
+                "max_tokens": 500,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": system_prompt + "\nUser: " + prompt
+                    }
+                ]
+            }
+
+            res = requests.post(url, headers=headers, json=payload, timeout=10)
+            data = res.json()
+
+            if "content" in data:
+                return data["content"][0]["text"]
+
     except:
-        return None
+        pass
+
+    # ================= GEMINI BACKUP =================
+    try:
+        if GEMINI_API_KEY:
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": system_prompt + "\nUser: " + prompt}
+                        ]
+                    }
+                ]
+            }
+
+            res = requests.post(url, json=payload, timeout=10)
+            data = res.json()
+
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+
+    except:
+        pass
+
+    return fallback(prompt)
 
 
 # ================= INTENT =================
@@ -200,7 +228,7 @@ def fallback(text: str):
         return "💰 Price depends on requirements. Send details."
 
     if "social" in text:
-        return "📱 Social media content service available."
+        return "📱 Social media service available."
 
     if "demo" in text:
         return "📅 Send details for demo request."
