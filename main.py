@@ -11,33 +11,26 @@ WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
 SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 
 
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {
-        "status": "MonirBot SaaS CORE LIVE 🚀",
-        "modules": ["AI", "CRM", "Memory", "Leads", "Social", "Admin"]
-    }
+    return {"status": "MonirBot AI SaaS LIVE 🚀"}
 
 
-# ================= ADMIN DASHBOARD API =================
+# ================= ADMIN =================
 @app.get("/admin")
 def admin():
     return {
-        "status": "Admin Panel Ready",
-        "features": {
-            "leads": "active",
-            "memory": "active",
-            "ai": "active",
-            "social": "active"
-        }
+        "status": "Admin Panel Active",
+        "system": "MonirBot SaaS AI",
+        "modules": ["AI", "Memory", "Lead", "Social", "Automation"]
     }
 
 
-# ================= WEBHOOK VERIFY =================
+# ================= VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -47,7 +40,7 @@ def verify(request: Request):
     return {"status": "failed"}
 
 
-# ================= MAIN BOT ENGINE =================
+# ================= WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
@@ -73,7 +66,10 @@ async def webhook(request: Request):
             if is_lead(text):
                 save_lead(user, text)
 
-            reply = ai_engine(text)
+            reply = ask_ai(text)
+
+            if not reply:
+                reply = fallback(text)
 
             send_whatsapp(user, reply)
 
@@ -84,50 +80,53 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= AI ENGINE =================
-def ai_engine(prompt: str):
+# ================= CLAUDE AI =================
+def ask_ai(prompt: str):
+
+    if not CLAUDE_API_KEY:
+        return None
+
+    url = "https://api.anthropic.com/v1/messages"
+
+    headers = {
+        "x-api-key": CLAUDE_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+    }
 
     system_prompt = """
 You are MonirBot AI SaaS Assistant.
 
-You help users with:
+You help with:
 - Hospital SaaS
 - Pharmacy SaaS
-- Social Media Content
-- Business Automation
-- Marketing & Sales
+- Business automation
+- Social media content
+- Pricing & sales
 
-Reply:
-- Short
-- Smart
-- Business focused
+Reply short, clear, professional.
 """
 
-    # Try Gemini AI
-    if GEMINI_API_KEY:
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "model": "claude-3-haiku-20240307",
+        "max_tokens": 500,
+        "messages": [
+            {
+                "role": "user",
+                "content": system_prompt + "\nUser: " + prompt
+            }
+        ]
+    }
 
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {"text": system_prompt + "\nUser: " + prompt}
-                    ]
-                }
-            ]
-        }
-
-        try:
-            res = requests.post(url, json=payload, timeout=10)
-            data = res.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-        except:
-            pass
-
-    return fallback(prompt)
+    try:
+        res = requests.post(url, headers=headers, json=payload, timeout=10)
+        data = res.json()
+        return data["content"][0]["text"]
+    except:
+        return None
 
 
-# ================= INTENT DETECTION =================
+# ================= INTENT =================
 def detect_intent(text: str):
 
     if "price" in text or "cost" in text or "koto" in text:
@@ -139,7 +138,7 @@ def detect_intent(text: str):
     if "pharmacy" in text:
         return "pharmacy"
 
-    if "social" in text or "caption" in text or "post" in text:
+    if "social" in text or "caption" in text:
         return "marketing"
 
     if "demo" in text:
@@ -148,7 +147,7 @@ def detect_intent(text: str):
     return "general"
 
 
-# ================= LEAD SYSTEM =================
+# ================= LEAD =================
 def is_lead(text: str):
 
     keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
@@ -171,7 +170,7 @@ def save_lead(phone, text):
         pass
 
 
-# ================= MEMORY SYSTEM =================
+# ================= MEMORY =================
 def save_memory(phone, text, intent):
 
     if not SHEET_WEBHOOK_URL:
@@ -188,7 +187,7 @@ def save_memory(phone, text, intent):
         pass
 
 
-# ================= FALLBACK AI =================
+# ================= FALLBACK =================
 def fallback(text: str):
 
     if "hospital" in text:
@@ -204,12 +203,12 @@ def fallback(text: str):
         return "📱 Social media content service available."
 
     if "demo" in text:
-        return "📅 Send details for demo booking."
+        return "📅 Send details for demo request."
 
     return "🤖 MonirBot AI working. Type /help"
 
 
-# ================= WHATSAPP SEND =================
+# ================= WHATSAPP =================
 def send_whatsapp(to, message):
 
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
