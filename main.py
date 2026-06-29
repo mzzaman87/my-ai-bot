@@ -19,7 +19,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI SaaS LIVE 🚀"}
+    return {"status": "MonirBot AI Running 🚀"}
 
 
 # ================= DASHBOARD =================
@@ -29,11 +29,11 @@ def dashboard():
         "status": "ACTIVE",
         "bot": "MonirBot AI SaaS",
         "ai": "Claude + Gemini Hybrid",
-        "features": ["Lead", "Memory", "WhatsApp", "AI Reply"]
+        "features": ["AI", "Lead", "Memory", "WhatsApp"]
     }
 
 
-# ================= WEBHOOK VERIFY =================
+# ================= VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -43,7 +43,7 @@ def verify(request: Request):
     return {"status": "failed"}
 
 
-# ================= MAIN WEBHOOK =================
+# ================= WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
@@ -62,13 +62,11 @@ async def webhook(request: Request):
 
             text = msg["text"]["body"]
 
-            # AI reply
             reply = ask_ai(text)
 
             if not reply:
-                reply = "🤖 AI temporarily unavailable. Try again later."
+                reply = fallback(text)
 
-            # Lead + Memory save
             save_memory(user, text)
 
             if is_lead(text):
@@ -83,12 +81,12 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= AI ENGINE (STABLE HYBRID) =================
+# ================= AI ENGINE (100% SAFE) =================
 def ask_ai(prompt: str):
 
-    system_prompt = "You are a smart SaaS AI assistant. Reply short and helpful."
+    system_prompt = "You are a helpful SaaS AI assistant. Reply short and clear."
 
-    # ---------- CLAUDE ----------
+    # ================= CLAUDE =================
     try:
         if CLAUDE_API_KEY:
             url = "https://api.anthropic.com/v1/messages"
@@ -105,22 +103,24 @@ def ask_ai(prompt: str):
                 "messages": [
                     {
                         "role": "user",
-                        "content": system_prompt + "\nUser: " + prompt
+                        "content": system_prompt + "\n" + prompt
                     }
                 ]
             }
 
             r = requests.post(url, headers=headers, json=payload, timeout=10)
 
-            if r.status_code == 200:
-                data = r.json()
-                if "content" in data:
-                    return data["content"][0]["text"]
+            data = r.json()
+
+            if isinstance(data, dict):
+                content = data.get("content")
+                if content and isinstance(content, list):
+                    return content[0].get("text")
 
     except Exception as e:
         print("Claude error:", e)
 
-    # ---------- GEMINI ----------
+    # ================= GEMINI =================
     try:
         if GEMINI_API_KEY:
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -128,18 +128,21 @@ def ask_ai(prompt: str):
             payload = {
                 "contents": [
                     {
-                        "parts": [
-                            {"text": system_prompt + "\nUser: " + prompt}
-                        ]
+                        "parts": [{"text": system_prompt + "\n" + prompt}]
                     }
                 ]
             }
 
             r = requests.post(url, json=payload, timeout=10)
 
-            if r.status_code == 200:
-                data = r.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+            data = r.json()
+
+            if "candidates" in data:
+                cand = data["candidates"]
+                if len(cand) > 0:
+                    parts = cand[0].get("content", {}).get("parts", [])
+                    if parts:
+                        return parts[0].get("text")
 
     except Exception as e:
         print("Gemini error:", e)
@@ -182,6 +185,24 @@ def save_memory(phone, text):
         })
     except:
         pass
+
+
+# ================= FALLBACK =================
+def fallback(text: str):
+
+    if "hospital" in text.lower():
+        return "🏥 Hospital SaaS available. Contact for demo."
+
+    if "pharmacy" in text.lower():
+        return "💊 Pharmacy SaaS available. Contact for details."
+
+    if "price" in text.lower():
+        return "💰 Price depends on requirements. Send details."
+
+    if "demo" in text.lower():
+        return "📅 Send details for demo."
+
+    return "🤖 MonirBot AI working. Type your message."
 
 
 # ================= WHATSAPP =================
