@@ -20,21 +20,17 @@ def home():
     return {"status": "MonirBot AI SaaS LIVE 🚀"}
 
 
-# ================= ADMIN PANEL =================
+# ================= ADMIN =================
 @app.get("/admin")
-def admin_panel():
+def admin():
     return {
         "status": "Admin Panel Active",
-        "features": [
-            "Leads",
-            "Memory",
-            "Social Requests",
-            "AI System"
-        ]
+        "system": "MonirBot AI SaaS",
+        "modules": ["Leads", "Memory", "AI", "Social Requests"]
     }
 
 
-# ================= VERIFY WEBHOOK =================
+# ================= VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -44,7 +40,7 @@ def verify(request: Request):
     return {"status": "failed"}
 
 
-# ================= MAIN WEBHOOK =================
+# ================= WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
@@ -70,10 +66,7 @@ async def webhook(request: Request):
             if is_lead(text):
                 save_lead(user, text)
 
-            reply = ask_ai(text)
-
-            if not reply:
-                reply = fallback(text)
+            reply = ai_reply(text)
 
             send_whatsapp(user, reply)
 
@@ -85,45 +78,43 @@ async def webhook(request: Request):
 
 
 # ================= AI ENGINE =================
-def ask_ai(prompt: str):
+def ai_reply(prompt: str):
 
-    if not GEMINI_API_KEY:
-        return None
+    if GEMINI_API_KEY:
 
-    system_prompt = """
+        system = """
 You are MonirBot AI SaaS Assistant.
 
-You help with:
+You help users with:
 - Hospital SaaS
 - Pharmacy SaaS
 - Social Media Content
 - Business Automation
 - Pricing & Sales
 
-Always reply:
-- Short
-- Professional
-- Business focused
+Reply short, clear, professional.
 """
 
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": system_prompt + "\nUser: " + prompt}
-                ]
-            }
-        ]
-    }
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": system + "\nUser: " + prompt}
+                    ]
+                }
+            ]
+        }
 
-    try:
-        res = requests.post(url, json=payload, timeout=10)
-        data = res.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
-    except:
-        return None
+        try:
+            res = requests.post(url, json=payload, timeout=10)
+            data = res.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except:
+            pass
+
+    return fallback(prompt)
 
 
 # ================= INTENT =================
@@ -138,14 +129,15 @@ def detect_intent(text: str):
     if "pharmacy" in text:
         return "pharmacy"
 
-    if "social" in text or "caption" in text:
+    if "social" in text or "caption" in text or "post" in text:
         return "marketing"
 
     return "general"
 
 
-# ================= LEAD =================
+# ================= LEAD CHECK =================
 def is_lead(text: str):
+
     keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
 
     for k in keywords:
@@ -202,10 +194,10 @@ def fallback(text: str):
     if "social" in text:
         return "📱 Social media content service available."
 
-    return "🤖 MonirBot AI working. Type /help"
+    return "🤖 MonirBot AI working. Type your query."
 
 
-# ================= WHATSAPP SEND =================
+# ================= WHATSAPP =================
 def send_whatsapp(to, message):
 
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
