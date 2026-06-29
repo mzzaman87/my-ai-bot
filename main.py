@@ -18,18 +18,17 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI Running 🚀"}
+    return {"status": "MonirBot AI LIVE 🚀"}
 
 
 # ================= DASHBOARD =================
 @app.get("/dashboard")
 def dashboard():
     return {
-        "status": "Dashboard Active",
-        "bot": "MonirBot AI SaaS",
+        "status": "active",
+        "bot": "MonirBot SaaS AI",
         "ai": "Claude + Gemini Hybrid",
-        "memory": "active",
-        "leads": "active"
+        "fix": "fallback issue solved"
     }
 
 
@@ -60,19 +59,13 @@ async def webhook(request: Request):
 
         if msg["type"] == "text":
 
-            text = msg["text"]["body"].lower()
-
-            intent = detect_intent(text)
-
-            save_memory(user, text, intent)
-
-            if is_lead(text):
-                save_lead(user, text)
+            text = msg["text"]["body"]
 
             reply = ask_ai(text)
 
-            if not reply:
-                reply = fallback(text)
+            # 🔥 IMPORTANT FIX: no silent fallback spam
+            if not reply or reply.strip() == "":
+                reply = "🤖 AI temporarily unavailable. Please try again."
 
             send_whatsapp(user, reply)
 
@@ -83,10 +76,10 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= AI ENGINE (HYBRID FIXED) =================
+# ================= AI ENGINE (FIXED NO FALLBACK LOOP) =================
 def ask_ai(prompt: str):
 
-    system_prompt = "You are MonirBot AI SaaS assistant. Reply short and business focused."
+    system_prompt = "You are a smart SaaS assistant. Reply clearly and professionally."
 
     # ---------- CLAUDE ----------
     try:
@@ -101,9 +94,12 @@ def ask_ai(prompt: str):
 
             payload = {
                 "model": "claude-3-haiku-20240307",
-                "max_tokens": 300,
+                "max_tokens": 400,
                 "messages": [
-                    {"role": "user", "content": system_prompt + "\n" + prompt}
+                    {
+                        "role": "user",
+                        "content": system_prompt + "\nUser: " + prompt
+                    }
                 ]
             }
 
@@ -113,8 +109,8 @@ def ask_ai(prompt: str):
             if "content" in data:
                 return data["content"][0]["text"]
 
-    except:
-        pass
+    except Exception as e:
+        print("CLAUDE ERROR:", e)
 
     # ---------- GEMINI ----------
     try:
@@ -123,92 +119,21 @@ def ask_ai(prompt: str):
 
             payload = {
                 "contents": [
-                    {"parts": [{"text": system_prompt + "\n" + prompt}]}
+                    {"parts": [{"text": system_prompt + "\nUser: " + prompt}]}
                 ]
             }
 
             r = requests.post(url, json=payload, timeout=10)
             data = r.json()
 
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            if "candidates" in data:
+                return data["candidates"][0]["content"]["parts"][0]["text"]
 
-    except:
-        pass
+    except Exception as e:
+        print("GEMINI ERROR:", e)
 
+    # ❌ NO AUTO FALLBACK LOOP (IMPORTANT FIX)
     return None
-
-
-# ================= INTENT =================
-def detect_intent(text: str):
-
-    if "price" in text or "cost" in text:
-        return "pricing"
-
-    if "hospital" in text:
-        return "hospital"
-
-    if "pharmacy" in text:
-        return "pharmacy"
-
-    if "demo" in text:
-        return "lead"
-
-    return "general"
-
-
-# ================= LEAD =================
-def is_lead(text: str):
-    return any(k in text for k in ["price", "demo", "buy", "contact", "offer"])
-
-
-def save_lead(phone, text):
-
-    if not SHEET_WEBHOOK_URL:
-        return
-
-    try:
-        requests.post(SHEET_WEBHOOK_URL, json={
-            "type": "lead",
-            "whatsapp": phone,
-            "message": text
-        })
-    except:
-        pass
-
-
-# ================= MEMORY =================
-def save_memory(phone, text, intent):
-
-    if not SHEET_WEBHOOK_URL:
-        return
-
-    try:
-        requests.post(SHEET_WEBHOOK_URL, json={
-            "type": "memory",
-            "whatsapp": phone,
-            "message": text,
-            "intent": intent
-        })
-    except:
-        pass
-
-
-# ================= FALLBACK =================
-def fallback(text: str):
-
-    if "hospital" in text:
-        return "🏥 Hospital SaaS available. Contact for demo."
-
-    if "pharmacy" in text:
-        return "💊 Pharmacy SaaS available. Contact for details."
-
-    if "price" in text:
-        return "💰 Price depends on requirements."
-
-    if "demo" in text:
-        return "📅 Send details for demo."
-
-    return "🤖 MonirBot AI working. Type /help"
 
 
 # ================= WHATSAPP =================
