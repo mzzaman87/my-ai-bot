@@ -62,7 +62,8 @@ async def receive_message(request: Request):
 
 # ================= COMMAND HANDLER =================
 def handle_command(text: str):
-
+     if "caption" in text or "post" in text or "content" in text:
+    return generate_ai_post(text)
     # HELP
     if "/help" in text:
         return "Commands: /services /price /social /publish"
@@ -140,3 +141,52 @@ def send_whatsapp_message(to, message):
     }
 
     requests.post(url, headers=headers, json=payload)
+def generate_ai_post(text: str):
+
+    text = text.lower()
+
+    if "pharmacy" in text:
+        return """
+💊 Pharmacy Instagram Caption
+
+"Your Health, Our Priority 💙
+Get quality medicines at affordable prices!
+
+📦 Fast Delivery
+💊 Trusted Pharmacy
+💰 Best Offers Available
+
+👉 Order Now & Stay Healthy!"
+
+#Hashtags
+#Pharmacy #HealthCare #Medicine #StayHealthy #Wellness
+"""
+
+    if "hospital" in text:
+        return """
+🏥 Hospital Service Caption
+
+"Advanced Healthcare for Everyone ❤️
+Expert doctors & modern facilities.
+
+🩺 24/7 Service
+🏥 Trusted Care
+💙 Your Health Matters
+
+👉 Book Appointment Today!"
+
+#Hashtags
+#Hospital #Healthcare #Doctors #Health
+"""
+
+    return """
+🤖 AI Content Generator
+
+Please specify:
+- Platform (Facebook / Instagram / LinkedIn)
+- Topic
+- Business type
+
+Example:
+"Instagram caption for fashion brand"
+"""
