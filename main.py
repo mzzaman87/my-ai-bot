@@ -17,20 +17,27 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI SaaS LIVE 🚀"}
-
-
-# ================= ADMIN =================
-@app.get("/admin")
-def admin():
     return {
-        "status": "Admin Panel Active",
-        "system": "MonirBot AI SaaS",
-        "modules": ["Leads", "Memory", "AI", "Social Requests"]
+        "status": "MonirBot SaaS CORE LIVE 🚀",
+        "modules": ["AI", "CRM", "Memory", "Leads", "Social", "Admin"]
     }
 
 
-# ================= VERIFY =================
+# ================= ADMIN DASHBOARD API =================
+@app.get("/admin")
+def admin():
+    return {
+        "status": "Admin Panel Ready",
+        "features": {
+            "leads": "active",
+            "memory": "active",
+            "ai": "active",
+            "social": "active"
+        }
+    }
+
+
+# ================= WEBHOOK VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -40,7 +47,7 @@ def verify(request: Request):
     return {"status": "failed"}
 
 
-# ================= WEBHOOK =================
+# ================= MAIN BOT ENGINE =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
@@ -66,7 +73,7 @@ async def webhook(request: Request):
             if is_lead(text):
                 save_lead(user, text)
 
-            reply = ai_reply(text)
+            reply = ai_engine(text)
 
             send_whatsapp(user, reply)
 
@@ -78,11 +85,9 @@ async def webhook(request: Request):
 
 
 # ================= AI ENGINE =================
-def ai_reply(prompt: str):
+def ai_engine(prompt: str):
 
-    if GEMINI_API_KEY:
-
-        system = """
+    system_prompt = """
 You are MonirBot AI SaaS Assistant.
 
 You help users with:
@@ -90,18 +95,23 @@ You help users with:
 - Pharmacy SaaS
 - Social Media Content
 - Business Automation
-- Pricing & Sales
+- Marketing & Sales
 
-Reply short, clear, professional.
+Reply:
+- Short
+- Smart
+- Business focused
 """
 
+    # Try Gemini AI
+    if GEMINI_API_KEY:
         url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
         payload = {
             "contents": [
                 {
                     "parts": [
-                        {"text": system + "\nUser: " + prompt}
+                        {"text": system_prompt + "\nUser: " + prompt}
                     ]
                 }
             ]
@@ -117,7 +127,7 @@ Reply short, clear, professional.
     return fallback(prompt)
 
 
-# ================= INTENT =================
+# ================= INTENT DETECTION =================
 def detect_intent(text: str):
 
     if "price" in text or "cost" in text or "koto" in text:
@@ -132,19 +142,18 @@ def detect_intent(text: str):
     if "social" in text or "caption" in text or "post" in text:
         return "marketing"
 
+    if "demo" in text:
+        return "lead"
+
     return "general"
 
 
-# ================= LEAD CHECK =================
+# ================= LEAD SYSTEM =================
 def is_lead(text: str):
 
     keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
 
-    for k in keywords:
-        if k in text:
-            return True
-
-    return False
+    return any(k in text for k in keywords)
 
 
 def save_lead(phone, text):
@@ -162,7 +171,7 @@ def save_lead(phone, text):
         pass
 
 
-# ================= MEMORY =================
+# ================= MEMORY SYSTEM =================
 def save_memory(phone, text, intent):
 
     if not SHEET_WEBHOOK_URL:
@@ -179,7 +188,7 @@ def save_memory(phone, text, intent):
         pass
 
 
-# ================= FALLBACK =================
+# ================= FALLBACK AI =================
 def fallback(text: str):
 
     if "hospital" in text:
@@ -194,10 +203,13 @@ def fallback(text: str):
     if "social" in text:
         return "📱 Social media content service available."
 
-    return "🤖 MonirBot AI working. Type your query."
+    if "demo" in text:
+        return "📅 Send details for demo booking."
+
+    return "🤖 MonirBot AI working. Type /help"
 
 
-# ================= WHATSAPP =================
+# ================= WHATSAPP SEND =================
 def send_whatsapp(to, message):
 
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
