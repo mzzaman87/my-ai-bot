@@ -18,16 +18,18 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI SaaS LIVE 🚀"}
+    return {"status": "MonirBot AI Running 🚀"}
 
 
-# ================= ADMIN =================
-@app.get("/admin")
-def admin():
+# ================= DASHBOARD =================
+@app.get("/dashboard")
+def dashboard():
     return {
-        "status": "Admin Panel Active",
-        "system": "MonirBot AI SaaS",
-        "modules": ["AI", "Memory", "Lead", "Social", "Automation"]
+        "status": "Dashboard Active",
+        "bot": "MonirBot AI SaaS",
+        "ai": "Claude + Gemini Hybrid",
+        "memory": "active",
+        "leads": "active"
     }
 
 
@@ -69,6 +71,9 @@ async def webhook(request: Request):
 
             reply = ask_ai(text)
 
+            if not reply:
+                reply = fallback(text)
+
             send_whatsapp(user, reply)
 
         return {"status": "ok"}
@@ -78,26 +83,12 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= HYBRID AI ENGINE =================
+# ================= AI ENGINE (HYBRID FIXED) =================
 def ask_ai(prompt: str):
 
-    system_prompt = """
-You are MonirBot AI SaaS Assistant.
+    system_prompt = "You are MonirBot AI SaaS assistant. Reply short and business focused."
 
-You help users with:
-- Hospital SaaS
-- Pharmacy SaaS
-- Marketing
-- Pricing
-- Business automation
-
-Reply:
-- Short
-- Smart
-- Professional
-"""
-
-    # ================= CLAUDE FIRST =================
+    # ---------- CLAUDE ----------
     try:
         if CLAUDE_API_KEY:
             url = "https://api.anthropic.com/v1/messages"
@@ -110,17 +101,14 @@ Reply:
 
             payload = {
                 "model": "claude-3-haiku-20240307",
-                "max_tokens": 500,
+                "max_tokens": 300,
                 "messages": [
-                    {
-                        "role": "user",
-                        "content": system_prompt + "\nUser: " + prompt
-                    }
+                    {"role": "user", "content": system_prompt + "\n" + prompt}
                 ]
             }
 
-            res = requests.post(url, headers=headers, json=payload, timeout=10)
-            data = res.json()
+            r = requests.post(url, headers=headers, json=payload, timeout=10)
+            data = r.json()
 
             if "content" in data:
                 return data["content"][0]["text"]
@@ -128,36 +116,32 @@ Reply:
     except:
         pass
 
-    # ================= GEMINI BACKUP =================
+    # ---------- GEMINI ----------
     try:
         if GEMINI_API_KEY:
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
             payload = {
                 "contents": [
-                    {
-                        "parts": [
-                            {"text": system_prompt + "\nUser: " + prompt}
-                        ]
-                    }
+                    {"parts": [{"text": system_prompt + "\n" + prompt}]}
                 ]
             }
 
-            res = requests.post(url, json=payload, timeout=10)
-            data = res.json()
+            r = requests.post(url, json=payload, timeout=10)
+            data = r.json()
 
             return data["candidates"][0]["content"]["parts"][0]["text"]
 
     except:
         pass
 
-    return fallback(prompt)
+    return None
 
 
 # ================= INTENT =================
 def detect_intent(text: str):
 
-    if "price" in text or "cost" in text or "koto" in text:
+    if "price" in text or "cost" in text:
         return "pricing"
 
     if "hospital" in text:
@@ -165,9 +149,6 @@ def detect_intent(text: str):
 
     if "pharmacy" in text:
         return "pharmacy"
-
-    if "social" in text or "caption" in text:
-        return "marketing"
 
     if "demo" in text:
         return "lead"
@@ -177,10 +158,7 @@ def detect_intent(text: str):
 
 # ================= LEAD =================
 def is_lead(text: str):
-
-    keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
-
-    return any(k in text for k in keywords)
+    return any(k in text for k in ["price", "demo", "buy", "contact", "offer"])
 
 
 def save_lead(phone, text):
@@ -225,13 +203,10 @@ def fallback(text: str):
         return "💊 Pharmacy SaaS available. Contact for details."
 
     if "price" in text:
-        return "💰 Price depends on requirements. Send details."
-
-    if "social" in text:
-        return "📱 Social media service available."
+        return "💰 Price depends on requirements."
 
     if "demo" in text:
-        return "📅 Send details for demo request."
+        return "📅 Send details for demo."
 
     return "🤖 MonirBot AI working. Type /help"
 
