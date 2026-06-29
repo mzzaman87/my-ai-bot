@@ -17,19 +17,15 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI Running 🚀"}
+    return {"status": "MonirBot AI SaaS Running 🚀"}
 
 
-# ================= WEBHOOK VERIFY =================
+# ================= VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
-    mode = request.query_params.get("hub.mode")
-    token = request.query_params.get("hub.verify_token")
-    challenge = request.query_params.get("hub.challenge")
-
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return int(challenge)
+    if request.query_params.get("hub.mode") == "subscribe" and request.query_params.get("hub.verify_token") == VERIFY_TOKEN:
+        return int(request.query_params.get("hub.challenge"))
 
     return {"status": "failed"}
 
@@ -50,11 +46,20 @@ async def webhook(request: Request):
         user = msg["from"]
 
         if msg["type"] == "text":
+
             text = msg["text"]["body"].lower()
 
-            save_memory(user, text)
+            intent = detect_intent(text)
 
-            reply = handle_command(text)
+            save_memory(user, text, intent)
+
+            if is_lead(text):
+                save_lead(user, text)
+
+            reply = ask_ai(text)
+
+            if not reply:
+                reply = fallback_reply(text)
 
             send_whatsapp(user, reply)
 
@@ -65,51 +70,33 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= COMMAND SYSTEM =================
-def handle_command(text: str):
-
-    # 🔥 AI FIRST (SMART BRAIN)
-    ai = ask_ai(text)
-    if ai:
-        return ai
-
-    # HELP
-    if "/help" in text:
-        return "Commands: /services /price /social /publish"
-
-    # SERVICES
-    if "/services" in text or "service" in text:
-        return "We provide SaaS, AI Bot, Social Media & Automation services."
-
-    # PRICE
-    if "/price" in text or "price" in text or "cost" in text:
-        return "Price depends on requirements. Send details."
-
-    # SOCIAL
-    if "/social" in text or "caption" in text or "post" in text:
-        return social_reply(text)
-
-    # PUBLISH
-    if "/publish" in text or "auto publish" in text:
-        return publish_reply()
-
-    return "MonirBot AI working 🤖 Type /help"
-
-
-# ================= AI FUNCTION =================
+# ================= AI ENGINE =================
 def ask_ai(prompt: str):
 
     if not GEMINI_API_KEY:
         return None
+
+    system_prompt = """
+You are MonirBot AI, a SaaS business assistant for OnSkill IT.
+
+You help with:
+- Hospital SaaS
+- Pharmacy SaaS
+- Social media content
+- Pricing explanation
+- Business automation
+
+Reply short, clear, professional.
+"""
+
+    final_prompt = system_prompt + "\nUser: " + prompt
 
     url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
     payload = {
         "contents": [
             {
-                "parts": [
-                    {"text": prompt}
-                ]
+                "parts": [{"text": final_prompt}]
             }
         ]
     }
@@ -117,46 +104,60 @@ def ask_ai(prompt: str):
     try:
         res = requests.post(url, json=payload, timeout=10)
         data = res.json()
-
         return data["candidates"][0]["content"]["parts"][0]["text"]
-
     except:
         return None
 
 
-# ================= SOCIAL REPLY =================
-def social_reply(text: str):
+# ================= INTENT =================
+def detect_intent(text: str):
 
-    if "pharmacy" in text:
-        return """💊 Pharmacy Post:
-Stay healthy with trusted medicine.
+    text = text.lower()
 
-#pharmacy #health #medicine"""
+    if "price" in text or "cost" in text or "koto" in text:
+        return "pricing"
 
     if "hospital" in text:
-        return """🏥 Hospital Post:
-Best healthcare services for everyone.
+        return "hospital_saas"
 
-#hospital #health #care"""
+    if "pharmacy" in text:
+        return "pharmacy_saas"
 
-    return "Send: Instagram caption + topic (e.g. pharmacy offer)"
+    if "caption" in text or "post" in text:
+        return "marketing"
+
+    return "general"
 
 
-# ================= PUBLISH =================
-def publish_reply():
-    return """
-🚀 Auto Publish System
+# ================= LEAD CHECK =================
+def is_lead(text: str):
 
-Send:
-- Platform
-- Page link
-- Content type
-- Frequency
-"""
+    keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
+
+    for k in keywords:
+        if k in text:
+            return True
+
+    return False
+
+
+def save_lead(phone, text):
+
+    if not SHEET_WEBHOOK_URL:
+        return
+
+    try:
+        requests.post(SHEET_WEBHOOK_URL, json={
+            "type": "lead",
+            "whatsapp": phone,
+            "message": text
+        })
+    except:
+        pass
 
 
 # ================= MEMORY =================
-def save_memory(phone, text):
+def save_memory(phone, text, intent):
 
     if not SHEET_WEBHOOK_URL:
         return
@@ -165,10 +166,29 @@ def save_memory(phone, text):
         requests.post(SHEET_WEBHOOK_URL, json={
             "type": "memory",
             "whatsapp": phone,
-            "message": text
-        }, timeout=5)
+            "message": text,
+            "intent": intent
+        })
     except:
         pass
+
+
+# ================= FALLBACK =================
+def fallback_reply(text: str):
+
+    if "hospital" in text:
+        return "🏥 Hospital SaaS available. Contact for demo."
+
+    if "pharmacy" in text:
+        return "💊 Pharmacy SaaS available. Contact for details."
+
+    if "price" in text:
+        return "💰 Price depends on requirements. Send details."
+
+    if "social" in text:
+        return "📱 We create social media content for all platforms."
+
+    return "🤖 MonirBot AI working. Type your requirement."
 
 
 # ================= WHATSAPP SEND =================
@@ -185,7 +205,7 @@ def send_whatsapp(to, message):
         "messaging_product": "whatsapp",
         "to": to,
         "type": "text",
-        "text": {"body": message}
+        "text": {"body": message[:4000]}
     }
 
     try:
