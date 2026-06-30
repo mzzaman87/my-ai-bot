@@ -11,47 +11,32 @@ app = FastAPI()
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
-CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "MonirBot AI Running 🚀"}
-
-
-# ================= DASHBOARD =================
-@app.get("/dashboard")
-def dashboard():
-    return {
-        "status": "ACTIVE",
-        "bot": "MonirBot AI SaaS",
-        "ai": "Claude + Gemini Hybrid"
-    }
+    return {"status": "Gemini Bot Running 🚀"}
 
 
 # ================= WEBHOOK VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
-    mode = request.query_params.get("hub.mode")
-    token = request.query_params.get("hub.verify_token")
-    challenge = request.query_params.get("hub.challenge")
-
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return int(challenge)
+    if request.query_params.get("hub.mode") == "subscribe" and request.query_params.get("hub.verify_token") == VERIFY_TOKEN:
+        return int(request.query_params.get("hub.challenge"))
 
     return {"status": "failed"}
 
 
-# ================= WEBHOOK MAIN =================
+# ================= WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
-    try:
-        data = await request.json()
+    data = await request.json()
 
+    try:
         value = data["entry"][0]["changes"][0]["value"]
 
         if "messages" not in value:
@@ -78,60 +63,8 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= AI ENGINE (FINAL STABLE) =================
+# ================= GEMINI AI ONLY =================
 def ask_ai(prompt: str):
-
-    import requests
-
-    system_prompt = "You are a helpful SaaS assistant. Reply short and clear."
-
-    # ================= CLAUDE =================
-    try:
-        if CLAUDE_API_KEY:
-
-            r = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": CLAUDE_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                },
-                json={
-                    "model": "claude-3-haiku-20240307",
-                    "max_tokens": 300,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                },
-                timeout=12
-            )
-
-            data = r.json()
-            print("CLAUDE DEBUG:", data)
-
-            # SAFE MULTI FORMAT CHECK
-            if isinstance(data, dict):
-
-                # format 1
-                if "content" in data:
-                    content = data["content"]
-                    if isinstance(content, list) and len(content) > 0:
-                        return content[0].get("text")
-
-                # format 2 (fallback)
-                if "type" in data and data.get("type") == "message":
-                    return str(data)
-
-    except Exception as e:
-        print("Claude ERROR:", e)
-
-    # ================= GEMINI =================
-  def ask_ai(prompt: str):
-
-    import requests
 
     try:
         if GEMINI_API_KEY:
@@ -152,12 +85,16 @@ def ask_ai(prompt: str):
             print("GEMINI DEBUG:", data)
 
             if "candidates" in data:
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+                cand = data["candidates"]
+                if len(cand) > 0:
+                    parts = cand[0].get("content", {}).get("parts", [])
+                    if len(parts) > 0:
+                        return parts[0].get("text")
 
     except Exception as e:
         print("Gemini error:", e)
 
-    return "❌ Gemini not working"
+    return None
 
 
 # ================= WHATSAPP =================
