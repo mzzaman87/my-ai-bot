@@ -14,7 +14,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "Gemini WhatsApp Bot Running 🚀"}
+    return {"status": "MonirBot AI Running 🚀"}
 
 
 # ================= WEBHOOK VERIFY =================
@@ -48,9 +48,9 @@ async def webhook(request: Request):
 
         if msg["type"] == "text":
 
-            user_text = msg["text"]["body"]
+            text = msg["text"]["body"]
 
-            reply = ask_ai(user_text)
+            reply = ask_ai(text)
 
             if not reply:
                 reply = "🤖 AI temporarily unavailable"
@@ -64,37 +64,36 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= GEMINI AI (CLEAN + SAFE) =================
+# ================= GEMINI AI (FIXED MODEL) =================
 def ask_ai(prompt: str):
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}"
 
         payload = {
             "contents": [
                 {
-                    "parts": [
-                        {"text": prompt}
-                    ]
+                    "parts": [{"text": prompt}]
                 }
             ]
         }
 
-        r = requests.post(url, json=payload, timeout=10)
+        r = requests.post(url, json=payload, timeout=15)
         data = r.json()
 
         print("GEMINI RESPONSE:", data)
 
-        # SAFE CHECK
-        if "candidates" in data:
-            return data["candidates"][0]["content"]["parts"][0]["text"]
-
-        # ERROR LOG
+        # ERROR CHECK
         if "error" in data:
             print("GEMINI ERROR:", data["error"])
+            return None
+
+        # SAFE PARSE
+        if "candidates" in data and len(data["candidates"]) > 0:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
 
     except Exception as e:
-        print("Gemini Exception:", e)
+        print("AI ERROR:", e)
 
     return None
 
@@ -121,4 +120,4 @@ def send_whatsapp(to, message):
     try:
         requests.post(url, headers=headers, json=payload, timeout=10)
     except Exception as e:
-        print("WhatsApp Error:", e)
+        print("WHATSAPP ERROR:", e)
