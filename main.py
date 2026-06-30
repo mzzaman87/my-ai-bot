@@ -83,7 +83,7 @@ async def webhook(request: Request):
 
 # ================= AI ENGINE (100% SAFE) =================
  # ================= CLAUDE FIRST =================
- def ask_ai(prompt: str):
+def ask_ai(prompt: str):
 
     import requests
 
@@ -154,29 +154,6 @@ async def webhook(request: Request):
         print("Gemini ERROR:", e)
 
     return None
-
-    # ================= FINAL SAFE RESPONSE =================
-    return "🤖 AI temporarily unavailable. Please try again."
-
-# ================= LEAD =================
-def is_lead(text: str):
-    keywords = ["price", "demo", "buy", "cost", "contact", "offer"]
-    return any(k in text.lower() for k in keywords)
-
-
-def save_lead(phone, text):
-
-    if not SHEET_WEBHOOK_URL:
-        return
-
-    try:
-        requests.post(SHEET_WEBHOOK_URL, json={
-            "type": "lead",
-            "whatsapp": phone,
-            "message": text
-        })
-    except:
-        pass
 
 
 # ================= MEMORY =================
