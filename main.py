@@ -82,11 +82,7 @@ async def webhook(request: Request):
 
 
 # ================= AI ENGINE (100% SAFE) =================
-def ask_ai(prompt: str):
-
-    system_prompt = "You are a helpful SaaS AI assistant. Reply short and clear."
-
-    # ================= CLAUDE =================
+ # ================= CLAUDE FIRST =================
     try:
         if CLAUDE_API_KEY:
             url = "https://api.anthropic.com/v1/messages"
@@ -103,24 +99,23 @@ def ask_ai(prompt: str):
                 "messages": [
                     {
                         "role": "user",
-                        "content": system_prompt + "\n" + prompt
+                        "content": system_prompt + "\nUser: " + prompt
                     }
                 ]
             }
 
             r = requests.post(url, headers=headers, json=payload, timeout=10)
-
             data = r.json()
 
             if isinstance(data, dict):
                 content = data.get("content")
-                if content and isinstance(content, list):
+                if content and len(content) > 0:
                     return content[0].get("text")
 
     except Exception as e:
         print("Claude error:", e)
 
-    # ================= GEMINI =================
+    # ================= GEMINI BACKUP =================
     try:
         if GEMINI_API_KEY:
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
@@ -128,13 +123,12 @@ def ask_ai(prompt: str):
             payload = {
                 "contents": [
                     {
-                        "parts": [{"text": system_prompt + "\n" + prompt}]
+                        "parts": [{"text": system_prompt + "\nUser: " + prompt}]
                     }
                 ]
             }
 
             r = requests.post(url, json=payload, timeout=10)
-
             data = r.json()
 
             if "candidates" in data:
@@ -147,8 +141,8 @@ def ask_ai(prompt: str):
     except Exception as e:
         print("Gemini error:", e)
 
-    return None
-
+    # ================= FINAL SAFE RESPONSE =================
+    return "🤖 AI temporarily unavailable. Please try again."
 
 # ================= LEAD =================
 def is_lead(text: str):
