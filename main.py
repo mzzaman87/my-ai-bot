@@ -81,11 +81,14 @@ async def webhook(request: Request):
 # ================= AI ENGINE (FINAL STABLE) =================
 def ask_ai(prompt: str):
 
+    import requests
+
     system_prompt = "You are a helpful SaaS assistant. Reply short and clear."
 
-    # ---------- CLAUDE ----------
+    # ================= CLAUDE =================
     try:
         if CLAUDE_API_KEY:
+
             r = requests.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
@@ -99,39 +102,48 @@ def ask_ai(prompt: str):
                     "messages": [
                         {
                             "role": "user",
-                            "content": system_prompt + "\nUser: " + prompt
+                            "content": prompt
                         }
                     ]
                 },
-                timeout=10
+                timeout=12
             )
 
             data = r.json()
+            print("CLAUDE DEBUG:", data)
 
+            # SAFE MULTI FORMAT CHECK
             if isinstance(data, dict):
-                content = data.get("content")
-                if isinstance(content, list) and len(content) > 0:
-                    text = content[0].get("text")
-                    if text:
-                        return text
+
+                # format 1
+                if "content" in data:
+                    content = data["content"]
+                    if isinstance(content, list) and len(content) > 0:
+                        return content[0].get("text")
+
+                # format 2 (fallback)
+                if "type" in data and data.get("type") == "message":
+                    return str(data)
 
     except Exception as e:
-        print("Claude error:", e)
+        print("Claude ERROR:", e)
 
-    # ---------- GEMINI ----------
+    # ================= GEMINI =================
     try:
         if GEMINI_API_KEY:
+
             r = requests.post(
                 f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
                 json={
                     "contents": [
-                        {"parts": [{"text": system_prompt + "\nUser: " + prompt}]}
+                        {"parts": [{"text": prompt}]}
                     ]
                 },
-                timeout=10
+                timeout=12
             )
 
             data = r.json()
+            print("GEMINI DEBUG:", data)
 
             if "candidates" in data:
                 cand = data["candidates"]
@@ -141,8 +153,9 @@ def ask_ai(prompt: str):
                         return parts[0].get("text")
 
     except Exception as e:
-        print("Gemini error:", e)
+        print("Gemini ERROR:", e)
 
+    return None
     # ---------- FINAL FALLBACK ----------
     return "🤖 AI temporarily unavailable"
 
