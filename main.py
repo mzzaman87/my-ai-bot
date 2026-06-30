@@ -6,6 +6,59 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
+@app.get("/debug-ai")
+def debug_ai():
+
+    result = {
+        "claude_key_exists": bool(CLAUDE_API_KEY),
+        "gemini_key_exists": bool(GEMINI_API_KEY),
+        "claude_test": None,
+        "gemini_test": None
+    }
+
+    # ---------- Claude test ----------
+    try:
+        if CLAUDE_API_KEY:
+            url = "https://api.anthropic.com/v1/messages"
+
+            headers = {
+                "x-api-key": CLAUDE_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+
+            payload = {
+                "model": "claude-3-haiku-20240307",
+                "max_tokens": 50,
+                "messages": [
+                    {"role": "user", "content": "say hello in one word"}
+                ]
+            }
+
+            r = requests.post(url, headers=headers, json=payload, timeout=10)
+            result["claude_test"] = r.json()
+
+    except Exception as e:
+        result["claude_test"] = str(e)
+
+    # ---------- Gemini test ----------
+    try:
+        if GEMINI_API_KEY:
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+
+            payload = {
+                "contents": [
+                    {"parts": [{"text": "say hello in one word"}]}
+                ]
+            }
+
+            r = requests.post(url, json=payload, timeout=10)
+            result["gemini_test"] = r.json()
+
+    except Exception as e:
+        result["gemini_test"] = str(e)
+
+    return result
 
 # ================= ENV =================
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
