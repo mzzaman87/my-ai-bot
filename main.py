@@ -83,6 +83,13 @@ async def webhook(request: Request):
 
 # ================= AI ENGINE (100% SAFE) =================
  # ================= CLAUDE FIRST =================
+ def ask_ai(prompt: str):
+
+    import requests
+
+    system_prompt = "You are a smart SaaS assistant. Reply short and clear."
+
+    # ================= CLAUDE =================
     try:
         if CLAUDE_API_KEY:
             url = "https://api.anthropic.com/v1/messages"
@@ -99,47 +106,54 @@ async def webhook(request: Request):
                 "messages": [
                     {
                         "role": "user",
-                        "content": system_prompt + "\nUser: " + prompt
+                        "content": prompt
                     }
                 ]
             }
 
-            r = requests.post(url, headers=headers, json=payload, timeout=10)
+            r = requests.post(url, headers=headers, json=payload, timeout=12)
+
             data = r.json()
 
-            if isinstance(data, dict):
-                content = data.get("content")
-                if content and len(content) > 0:
+            # DEBUG PRINT (IMPORTANT)
+            print("CLAUDE RESPONSE:", data)
+
+            if isinstance(data, dict) and "content" in data:
+                content = data["content"]
+                if isinstance(content, list) and len(content) > 0:
                     return content[0].get("text")
 
     except Exception as e:
-        print("Claude error:", e)
+        print("Claude ERROR:", e)
 
-    # ================= GEMINI BACKUP =================
+    # ================= GEMINI =================
     try:
         if GEMINI_API_KEY:
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
             payload = {
                 "contents": [
-                    {
-                        "parts": [{"text": system_prompt + "\nUser: " + prompt}]
-                    }
+                    {"parts": [{"text": prompt}]}
                 ]
             }
 
-            r = requests.post(url, json=payload, timeout=10)
+            r = requests.post(url, json=payload, timeout=12)
+
             data = r.json()
 
+            # DEBUG PRINT (IMPORTANT)
+            print("GEMINI RESPONSE:", data)
+
             if "candidates" in data:
-                cand = data["candidates"]
-                if len(cand) > 0:
-                    parts = cand[0].get("content", {}).get("parts", [])
-                    if parts:
+                if len(data["candidates"]) > 0:
+                    parts = data["candidates"][0].get("content", {}).get("parts", [])
+                    if len(parts) > 0:
                         return parts[0].get("text")
 
     except Exception as e:
-        print("Gemini error:", e)
+        print("Gemini ERROR:", e)
+
+    return None
 
     # ================= FINAL SAFE RESPONSE =================
     return "🤖 AI temporarily unavailable. Please try again."
