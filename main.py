@@ -29,11 +29,11 @@ def dashboard():
         "status": "ACTIVE",
         "bot": "MonirBot AI SaaS",
         "ai": "Claude + Gemini Hybrid",
-        "features": ["AI", "Lead", "Memory", "WhatsApp"]
+        "version": "final stable"
     }
 
 
-# ================= VERIFY =================
+# ================= WEBHOOK VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
@@ -43,7 +43,7 @@ def verify(request: Request):
     return {"status": "failed"}
 
 
-# ================= WEBHOOK =================
+# ================= WEBHOOK MAIN =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
@@ -65,12 +65,7 @@ async def webhook(request: Request):
             reply = ask_ai(text)
 
             if not reply:
-                reply = fallback(text)
-
-            save_memory(user, text)
-
-            if is_lead(text):
-                save_lead(user, text)
+                reply = "🤖 AI temporarily unavailable"
 
             send_whatsapp(user, reply)
 
@@ -81,15 +76,12 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= AI ENGINE (100% SAFE) =================
- # ================= CLAUDE FIRST =================
+# ================= AI ENGINE (FINAL FIXED) =================
 def ask_ai(prompt: str):
 
-    import requests
+    system_prompt = "You are a helpful SaaS assistant. Reply short and clear."
 
-    system_prompt = "You are a smart SaaS assistant. Reply short and clear."
-
-    # ================= CLAUDE =================
+    # ---------- CLAUDE ----------
     try:
         if CLAUDE_API_KEY:
             url = "https://api.anthropic.com/v1/messages"
@@ -106,88 +98,49 @@ def ask_ai(prompt: str):
                 "messages": [
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": system_prompt + "\n" + prompt
                     }
                 ]
             }
 
-            r = requests.post(url, headers=headers, json=payload, timeout=12)
-
+            r = requests.post(url, headers=headers, json=payload, timeout=10)
             data = r.json()
 
-            # DEBUG PRINT (IMPORTANT)
-            print("CLAUDE RESPONSE:", data)
-
-            if isinstance(data, dict) and "content" in data:
-                content = data["content"]
-                if isinstance(content, list) and len(content) > 0:
+            if isinstance(data, dict):
+                content = data.get("content")
+                if content and len(content) > 0:
                     return content[0].get("text")
 
     except Exception as e:
-        print("Claude ERROR:", e)
+        print("Claude error:", e)
 
-    # ================= GEMINI =================
+    # ---------- GEMINI ----------
     try:
         if GEMINI_API_KEY:
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
             payload = {
                 "contents": [
-                    {"parts": [{"text": prompt}]}
+                    {
+                        "parts": [{"text": system_prompt + "\n" + prompt}]
+                    }
                 ]
             }
 
-            r = requests.post(url, json=payload, timeout=12)
-
+            r = requests.post(url, json=payload, timeout=10)
             data = r.json()
 
-            # DEBUG PRINT (IMPORTANT)
-            print("GEMINI RESPONSE:", data)
-
             if "candidates" in data:
-                if len(data["candidates"]) > 0:
-                    parts = data["candidates"][0].get("content", {}).get("parts", [])
+                cand = data["candidates"]
+                if len(cand) > 0:
+                    parts = cand[0].get("content", {}).get("parts", [])
                     if len(parts) > 0:
                         return parts[0].get("text")
 
     except Exception as e:
-        print("Gemini ERROR:", e)
+        print("Gemini error:", e)
 
     return None
-
-
-# ================= MEMORY =================
-def save_memory(phone, text):
-
-    if not SHEET_WEBHOOK_URL:
-        return
-
-    try:
-        requests.post(SHEET_WEBHOOK_URL, json={
-            "type": "memory",
-            "whatsapp": phone,
-            "message": text
-        })
-    except:
-        pass
-
-
-# ================= FALLBACK =================
-def fallback(text: str):
-
-    if "hospital" in text.lower():
-        return "🏥 Hospital SaaS available. Contact for demo."
-
-    if "pharmacy" in text.lower():
-        return "💊 Pharmacy SaaS available. Contact for details."
-
-    if "price" in text.lower():
-        return "💰 Price depends on requirements. Send details."
-
-    if "demo" in text.lower():
-        return "📅 Send details for demo."
-
-    return "🤖 MonirBot AI working. Type your message."
 
 
 # ================= WHATSAPP =================
