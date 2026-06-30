@@ -6,65 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
-@app.get("/debug-ai")
-def debug_ai():
-
-    result = {
-        "claude_key_exists": bool(CLAUDE_API_KEY),
-        "gemini_key_exists": bool(GEMINI_API_KEY),
-        "claude_test": None,
-        "gemini_test": None
-    }
-
-    # ---------- Claude test ----------
-    try:
-        if CLAUDE_API_KEY:
-            url = "https://api.anthropic.com/v1/messages"
-
-            headers = {
-                "x-api-key": CLAUDE_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            }
-
-            payload = {
-                "model": "claude-3-haiku-20240307",
-                "max_tokens": 50,
-                "messages": [
-                    {"role": "user", "content": "say hello in one word"}
-                ]
-            }
-
-            r = requests.post(url, headers=headers, json=payload, timeout=10)
-            result["claude_test"] = r.json()
-
-    except Exception as e:
-        result["claude_test"] = str(e)
-
-    # ---------- Gemini test ----------
-    try:
-        if GEMINI_API_KEY:
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-
-            payload = {
-                "contents": [
-                    {"parts": [{"text": "say hello in one word"}]}
-                ]
-            }
-
-            r = requests.post(url, json=payload, timeout=10)
-            result["gemini_test"] = r.json()
-
-    except Exception as e:
-        result["gemini_test"] = str(e)
-
-    return result
 
 # ================= ENV =================
 WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
-SHEET_WEBHOOK_URL = os.getenv("SHEET_WEBHOOK_URL")
 CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -81,8 +27,7 @@ def dashboard():
     return {
         "status": "ACTIVE",
         "bot": "MonirBot AI SaaS",
-        "ai": "Claude + Gemini Hybrid",
-        "version": "final stable"
+        "ai": "Claude + Gemini Hybrid"
     }
 
 
@@ -90,8 +35,12 @@ def dashboard():
 @app.get("/webhook")
 def verify(request: Request):
 
-    if request.query_params.get("hub.mode") == "subscribe" and request.query_params.get("hub.verify_token") == VERIFY_TOKEN:
-        return int(request.query_params.get("hub.challenge"))
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return int(challenge)
 
     return {"status": "failed"}
 
@@ -100,9 +49,9 @@ def verify(request: Request):
 @app.post("/webhook")
 async def webhook(request: Request):
 
-    data = await request.json()
-
     try:
+        data = await request.json()
+
         value = data["entry"][0]["changes"][0]["value"]
 
         if "messages" not in value:
@@ -125,11 +74,11 @@ async def webhook(request: Request):
         return {"status": "ok"}
 
     except Exception as e:
-        print("ERROR:", e)
+        print("WEBHOOK ERROR:", e)
         return {"status": "error"}
 
 
-# ================= AI ENGINE (FINAL FIXED) =================
+# ================= AI ENGINE (FINAL STABLE) =================
 def ask_ai(prompt: str):
 
     system_prompt = "You are a helpful SaaS assistant. Reply short and clear."
@@ -137,32 +86,34 @@ def ask_ai(prompt: str):
     # ---------- CLAUDE ----------
     try:
         if CLAUDE_API_KEY:
-            url = "https://api.anthropic.com/v1/messages"
+            r = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": CLAUDE_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json"
+                },
+                json={
+                    "model": "claude-3-haiku-20240307",
+                    "max_tokens": 300,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": system_prompt + "\nUser: " + prompt
+                        }
+                    ]
+                },
+                timeout=10
+            )
 
-            headers = {
-                "x-api-key": CLAUDE_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            }
-
-            payload = {
-                "model": "claude-3-haiku-20240307",
-                "max_tokens": 300,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": system_prompt + "\n" + prompt
-                    }
-                ]
-            }
-
-            r = requests.post(url, headers=headers, json=payload, timeout=10)
             data = r.json()
 
             if isinstance(data, dict):
                 content = data.get("content")
-                if content and len(content) > 0:
-                    return content[0].get("text")
+                if isinstance(content, list) and len(content) > 0:
+                    text = content[0].get("text")
+                    if text:
+                        return text
 
     except Exception as e:
         print("Claude error:", e)
@@ -170,17 +121,16 @@ def ask_ai(prompt: str):
     # ---------- GEMINI ----------
     try:
         if GEMINI_API_KEY:
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            r = requests.post(
+                f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [
+                        {"parts": [{"text": system_prompt + "\nUser: " + prompt}]}
+                    ]
+                },
+                timeout=10
+            )
 
-            payload = {
-                "contents": [
-                    {
-                        "parts": [{"text": system_prompt + "\n" + prompt}]
-                    }
-                ]
-            }
-
-            r = requests.post(url, json=payload, timeout=10)
             data = r.json()
 
             if "candidates" in data:
@@ -193,7 +143,8 @@ def ask_ai(prompt: str):
     except Exception as e:
         print("Gemini error:", e)
 
-    return None
+    # ---------- FINAL FALLBACK ----------
+    return "🤖 AI temporarily unavailable"
 
 
 # ================= WHATSAPP =================
@@ -215,5 +166,5 @@ def send_whatsapp(to, message):
 
     try:
         requests.post(url, headers=headers, json=payload, timeout=10)
-    except:
-        pass
+    except Exception as e:
+        print("WhatsApp error:", e)
