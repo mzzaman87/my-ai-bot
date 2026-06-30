@@ -1,9 +1,6 @@
 import os
 import requests
 from fastapi import FastAPI, Request
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = FastAPI()
 
@@ -17,39 +14,43 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ================= HOME =================
 @app.get("/")
 def home():
-    return {"status": "Gemini Bot Running 🚀"}
+    return {"status": "Gemini WhatsApp Bot Running 🚀"}
 
 
 # ================= WEBHOOK VERIFY =================
 @app.get("/webhook")
 def verify(request: Request):
 
-    if request.query_params.get("hub.mode") == "subscribe" and request.query_params.get("hub.verify_token") == VERIFY_TOKEN:
-        return int(request.query_params.get("hub.challenge"))
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
 
-    return {"status": "failed"}
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return int(challenge)
+
+    return {"status": "error"}
 
 
 # ================= WEBHOOK =================
 @app.post("/webhook")
 async def webhook(request: Request):
 
-    data = await request.json()
-
     try:
-        value = data["entry"][0]["changes"][0]["value"]
+        data = await request.json()
 
-        if "messages" not in value:
+        entry = data["entry"][0]["changes"][0]["value"]
+
+        if "messages" not in entry:
             return {"status": "no message"}
 
-        msg = value["messages"][0]
+        msg = entry["messages"][0]
         user = msg["from"]
 
         if msg["type"] == "text":
 
-            text = msg["text"]["body"]
+            user_text = msg["text"]["body"]
 
-            reply = ask_ai(text)
+            reply = ask_ai(user_text)
 
             if not reply:
                 reply = "🤖 AI temporarily unavailable"
@@ -63,41 +64,42 @@ async def webhook(request: Request):
         return {"status": "error"}
 
 
-# ================= GEMINI AI ONLY =================
+# ================= GEMINI AI (CLEAN + SAFE) =================
 def ask_ai(prompt: str):
 
     try:
-        if GEMINI_API_KEY:
+        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt}
+                    ]
+                }
+            ]
+        }
 
-            payload = {
-                "contents": [
-                    {
-                        "parts": [{"text": prompt}]
-                    }
-                ]
-            }
+        r = requests.post(url, json=payload, timeout=10)
+        data = r.json()
 
-            r = requests.post(url, json=payload, timeout=10)
-            data = r.json()
+        print("GEMINI RESPONSE:", data)
 
-            print("GEMINI DEBUG:", data)
+        # SAFE CHECK
+        if "candidates" in data:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
 
-            if "candidates" in data:
-                cand = data["candidates"]
-                if len(cand) > 0:
-                    parts = cand[0].get("content", {}).get("parts", [])
-                    if len(parts) > 0:
-                        return parts[0].get("text")
+        # ERROR LOG
+        if "error" in data:
+            print("GEMINI ERROR:", data["error"])
 
     except Exception as e:
-        print("Gemini error:", e)
+        print("Gemini Exception:", e)
 
     return None
 
 
-# ================= WHATSAPP =================
+# ================= WHATSAPP SEND =================
 def send_whatsapp(to, message):
 
     url = f"https://graph.facebook.com/v17.0/{PHONE_NUMBER_ID}/messages"
@@ -111,10 +113,12 @@ def send_whatsapp(to, message):
         "messaging_product": "whatsapp",
         "to": to,
         "type": "text",
-        "text": {"body": message[:4000]}
+        "text": {
+            "body": message[:4000]
+        }
     }
 
     try:
         requests.post(url, headers=headers, json=payload, timeout=10)
     except Exception as e:
-        print("WhatsApp error:", e)
+        print("WhatsApp Error:", e)
