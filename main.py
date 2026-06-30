@@ -68,7 +68,7 @@ async def webhook(request: Request):
 def ask_ai(prompt: str):
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1/models/models/gemini-1.0-pro:generateContent?key={GEMINI_API_KEY}"
 
         payload = {
             "contents": [
