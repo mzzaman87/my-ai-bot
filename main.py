@@ -129,35 +129,35 @@ def ask_ai(prompt: str):
         print("Claude ERROR:", e)
 
     # ================= GEMINI =================
+  def ask_ai(prompt: str):
+
+    import requests
+
     try:
         if GEMINI_API_KEY:
 
-            r = requests.post(
-                f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [
-                        {"parts": [{"text": prompt}]}
-                    ]
-                },
-                timeout=12
-            )
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
 
+            payload = {
+                "contents": [
+                    {
+                        "parts": [{"text": prompt}]
+                    }
+                ]
+            }
+
+            r = requests.post(url, json=payload, timeout=10)
             data = r.json()
+
             print("GEMINI DEBUG:", data)
 
             if "candidates" in data:
-                cand = data["candidates"]
-                if len(cand) > 0:
-                    parts = cand[0].get("content", {}).get("parts", [])
-                    if len(parts) > 0:
-                        return parts[0].get("text")
+                return data["candidates"][0]["content"]["parts"][0]["text"]
 
     except Exception as e:
-        print("Gemini ERROR:", e)
+        print("Gemini error:", e)
 
-    return None
-    # ---------- FINAL FALLBACK ----------
-    return "🤖 AI temporarily unavailable"
+    return "❌ Gemini not working"
 
 
 # ================= WHATSAPP =================
